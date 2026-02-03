@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.env
+
+# Database & Logs
+cygnusa.db
+*.log
+
+# Local Storage (Now handled by Supabase)
+backend/uploads/
+backend/snapshots/
+frontend/dist/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

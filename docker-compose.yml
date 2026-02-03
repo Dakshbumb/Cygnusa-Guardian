@@ -1,0 +1,31 @@
+# Cygnusa Guardian - Docker Compose (Production Preview)
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/cygnusa.db:/app/cygnusa.db
+      - ./backend/uploads:/app/uploads
+    environment:
+      - ENV=production
+      - LOG_LEVEL=INFO
+      - GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+      - OPENAI_API_KEY=YOUR_OPENAI_API_KEY_HERE
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api
+    restart: unless-stopped

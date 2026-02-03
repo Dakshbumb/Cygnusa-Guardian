@@ -1,0 +1,88 @@
+[
+    {
+        "id": "ai_engineer",
+        "title": "AI Engineer",
+        "required_skills": [
+            "python",
+            "machine learning",
+            "pytorch",
+            "tensorflow",
+            "scikit-learn",
+            "nlp",
+            "transformers"
+        ],
+        "critical_skills": [
+            "python",
+            "machine learning"
+        ]
+    },
+    {
+        "id": "devops_intern",
+        "title": "DevOps Intern",
+        "required_skills": [
+            "linux",
+            "git",
+            "docker",
+            "kubernetes",
+            "bash",
+            "jenkins",
+            "ansible"
+        ],
+        "critical_skills": [
+            "git",
+            "linux"
+        ]
+    },
+    {
+        "id": "cloud_engineer",
+        "title": "Cloud Engineer",
+        "required_skills": [
+            "aws",
+            "azure",
+            "gcp",
+            "terraform",
+            "cloudformation",
+            "iam",
+            "s3"
+        ],
+        "critical_skills": [
+            "aws",
+            "terraform"
+        ]
+    },
+    {
+        "id": "fullstack_dev",
+        "title": "Fullstack Developer",
+        "required_skills": [
+            "javascript",
+            "react",
+            "nodejs",
+            "express",
+            "postgresql",
+            "tailwindcss",
+            "typescript"
+        ],
+        "critical_skills": [
+            "javascript",
+            "react",
+            "nodejs"
+        ]
+    },
+    {
+        "id": "data_analyst",
+        "title": "Data Analyst",
+        "required_skills": [
+            "sql",
+            "python",
+            "pandas",
+            "numpy",
+            "tableau",
+            "power bi",
+            "excel"
+        ],
+        "critical_skills": [
+            "sql",
+            "python"
+        ]
+    }
+]
