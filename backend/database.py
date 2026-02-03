@@ -58,7 +58,7 @@ class UserModel(Base):
 class Database:
     def __init__(self, db_url: Optional[str] = None):
         if not db_url:
-            db_url = os.getenv("DATABASE_URL", "sqlite:///./cygnusa.db")
+            db_url = os.getenv("DATABASE_URL") or os.getenv("DATABASE_URI") or "sqlite:///./cygnusa.db"
         
         # Handle Heroku/Railway style postgres:// vs postgresql://
         if db_url.startswith("postgres://"):
