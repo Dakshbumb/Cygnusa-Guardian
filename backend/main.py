@@ -140,11 +140,27 @@ def root():
 @app.get("/api/health")
 def health_check():
     """Detailed health check"""
+    db_ok = db.check_connection()
+    user_count = 0
+    candidate_count = 0
+    
+    if db_ok:
+        try:
+            user_count = len(db.get_all_users())
+            candidate_count = len(db.get_all_candidates())
+        except:
+            pass
+            
     return {
-        "status": "healthy",
-        "database": "connected",
+        "status": "healthy" if db_ok else "degraded",
+        "database": "connected" if db_ok else "connection_failed",
+        "counts": {
+            "users": user_count,
+            "candidates": candidate_count
+        },
         "ai_engine": "gemini" if decision_engine.use_gemini else "fallback",
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "env": ENV
     }
 
 
