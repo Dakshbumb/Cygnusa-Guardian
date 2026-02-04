@@ -63,8 +63,9 @@ app = FastAPI(
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://cygnusa-guardian.vercel.app",  # Your Vercel URL
-    os.getenv("FRONTEND_PRODUCTION_URL", "*")
+    "https://cygnusa-guardian.vercel.app",  # Principal Vercel URL
+    "https://cygnusa-guardian-one.vercel.app", # Potential alternative
+    "*" # Fallback for dev/testing
 ]
 
 app.add_middleware(
@@ -101,10 +102,25 @@ supabase: Optional[Client] = None
 
 if SUPABASE_URL and SUPABASE_KEY:
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        logger.info("Supabase client initialized for storage")
+        # Robust initialization for cloud environments
+        from supabase.client import ClientOptions
+        supabase = create_client(
+            SUPABASE_URL, 
+            SUPABASE_KEY,
+            options=ClientOptions(
+                postgrest_client_timeout=10,
+                storage_client_timeout=10
+            )
+        )
+        logger.info("Supabase client successfully initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize Supabase client: {e}")
+        logger.error(f"Supabase init error (retrying with minimal options): {e}")
+        try:
+            # Fallback to absolute bare-bones client
+            supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+            logger.info("Supabase client initialized with fallback")
+        except Exception as e2:
+            logger.error(f"Critical Supabase failure: {e2}")
 
 
 
