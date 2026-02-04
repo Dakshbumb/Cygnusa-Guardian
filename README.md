@@ -61,24 +61,24 @@ Traditional AI hiring tools are opaque. Candidates get rejected without knowing 
 
 ```mermaid
 graph TD
-    User[Candidate / Recruiter] --> Frontend[React + Vite (Vercel)]
-    Frontend --> API[FastAPI Gateway (Render)]
+    User["Candidate / Recruiter"] --> Frontend["React + Vite (Vercel)"]
+    Frontend --> API["FastAPI Gateway (Render)"]
     
     subgraph "Backend Core"
-        API --> Auth[JWT Auth]
-        API --> Resume[Resume Parser]
-        API --> Code[Code Sandbox]
-        API --> Engine[Decision Engine]
+        API --> Auth["JWT Auth"]
+        API --> Resume["Resume Parser"]
+        API --> Code["Code Sandbox"]
+        API --> Engine["Decision Engine"]
     end
     
     subgraph "Data & AI Layer"
-        Engine --> Gemini[Google Gemini AI]
-        API --> Database[(Supabase PostgreSQL)]
+        Engine --> Gemini["Google Gemini AI"]
+        API --> Database[("Supabase PostgreSQL")]
         Resume --> Database
     end
     
     subgraph "Security"
-        Frontend --> Monitor[Integrity Monitor]
+        Frontend --> Monitor["Integrity Monitor"]
         Monitor --> API
     end
 ```
