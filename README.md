@@ -5,14 +5,14 @@
 # 🛡️ Cygnusa Guardian
 ### Glass-Box Hiring Intelligence
 
-[![Deployment Status](https://img.shields.io/badge/Deployment-Live-success?style=for-the-badge&logo=vercel)](https://cygnusa-guardian-el0vtymrt-dakshhhs-projects.vercel.app/)
-[![Backend Status](https://img.shields.io/badge/Backend-Healthy-success?style=for-the-badge&logo=render)](https://cygnusa-guardian.onrender.com)
-[![Tech Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20React%20%7C%20Supabase-blue?style=for-the-badge)](https://github.com/Dakshbumb/Cygnusa-Guardian)
-[![AI Engine](https://img.shields.io/badge/AI-Gemini%20Pro-orange?style=for-the-badge&logo=google)](https://deepmind.google/technologies/gemini/)
+[![Transparency](https://img.shields.io/badge/Vision-100%25_Transparent-059669?style=for-the-badge&logo=eye-show)](https://github.com/Dakshbumb/Cygnusa-Guardian)
+[![Integrity](https://img.shields.io/badge/Security-Forensic_Grade-DC2626?style=for-the-badge&logo=shield-check)](https://github.com/Dakshbumb/Cygnusa-Guardian)
+[![Intelligence](https://img.shields.io/badge/Intelligence-Explainable_AI-2563EB?style=for-the-badge&logo=openai)](https://github.com/Dakshbumb/Cygnusa-Guardian)
+[![Reliability](https://img.shields.io/badge/Architecture-Enterprise_Ready-7C3AED?style=for-the-badge&logo=lightning)](https://github.com/Dakshbumb/Cygnusa-Guardian)
 
 <p align="center">
   <a href="https://cygnusa-guardian-el0vtymrt-dakshhhs-projects.vercel.app/">
-    <img src="https://img.shields.io/badge/🚀_Launch_Live_Demo-2563EB?style=for-the-badge&logoColor=white" height="40" />
+    <img src="https://img.shields.io/badge/�_ENTER_THE_GUARDIAN_DOMAIN-2563EB?style=for-the-badge&logoColor=white" height="45" />
   </a>
 </p>
 
