@@ -61,9 +61,10 @@ app = FastAPI(
 
 # CORS middleware for frontend
 ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Development
-    "http://localhost:3000",  # Alternative dev port
-    os.getenv("FRONTEND_PRODUCTION_URL", "https://guardian.cygnusa.demo") # Placeholder
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://cygnusa-guardian.vercel.app",  # Your Vercel URL
+    os.getenv("FRONTEND_PRODUCTION_URL", "*")
 ]
 
 app.add_middleware(
