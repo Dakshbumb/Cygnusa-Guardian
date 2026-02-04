@@ -1,9 +1,20 @@
 import axios from 'axios';
 
-const rawApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+let rawApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+// Security & Robustness: Ensure protocol is present
+if (rawApiBase && !rawApiBase.startsWith('http')) {
+    rawApiBase = `https://${rawApiBase}`;
+}
+
 const cleanBase = rawApiBase.replace(/\/$/, '').replace(/\/api$/, '');
 const API_BASE = `${cleanBase}/api`;
 export const BASE_URL = cleanBase;
+
+// Alert the developer if using internal Railway URL by mistake
+if (cleanBase.includes('railway.internal')) {
+    console.error('❌ CRITICAL CONFIG ERROR: You are using a PRIVATE Railway internal URL. This will NOT work in the browser. Please use the public .railway.app domain in your Vercel environment variables.');
+}
 
 console.log(`%c 🌐 Cygnusa Guardian API Initialized `, 'background: #2563eb; color: white; font-weight: bold; border-radius: 4px; padding: 2px 4px;');
 console.log(`📍 API_BASE: ${API_BASE}`);
