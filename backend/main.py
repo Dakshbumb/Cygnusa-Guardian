@@ -1654,6 +1654,27 @@ async def revoke_share_link(share_token: str):
     return {"success": True, "message": "Share link revoked"}
 
 
+@app.post("/api/demo/seed")
+async def seed_demo():
+    """Seed the database with demo users and candidates"""
+    try:
+        from seed_demo_data import seed_all_demos
+        # Use fallback engine for seeding to avoid AI costs during setup
+        from decision_engine import ExplainableDecisionEngine
+        fallback_engine = ExplainableDecisionEngine(use_gemini=False)
+        
+        results = seed_all_demos(db, fallback_engine)
+        logger.info(f"Database seeded with {len(results)} candidates")
+        return {
+            "success": True, 
+            "message": f"Seeded {len(results)} candidates and demo users",
+            "candidates": results
+        }
+    except Exception as e:
+        logger.error(f"Seeding failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Seeding failed: {str(e)}")
+
+
 # ==================== Error Handling ====================
 
 @app.exception_handler(Exception)
