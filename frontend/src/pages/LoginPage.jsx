@@ -71,7 +71,8 @@ export function LoginPage() {
             }
         } catch (err) {
             console.error('Login failed:', err);
-            setError(err.response?.data?.detail || 'Login failed. Please try again.');
+            const serverError = err.response?.data?.detail || err.response?.data?.error;
+            setError(serverError || 'Login failed. Please try again.');
         } finally {
             setLoading(false);
         }

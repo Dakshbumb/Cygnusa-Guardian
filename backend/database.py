@@ -75,6 +75,19 @@ class Database:
     def init_db(self):
         """Initialize database tables"""
         Base.metadata.create_all(self.engine)
+        
+    def check_connection(self) -> bool:
+        """Verify database connectivity"""
+        try:
+            from sqlalchemy import text
+            with self.session_factory() as session:
+                session.execute(text("SELECT 1"))
+            return True
+        except Exception as e:
+            # Import logger here to avoid circular imports if any
+            import logging
+            logging.getLogger("cygnusa-db").error(f"Database connection check failed: {e}")
+            return False
     
     # ==================== Candidate Operations ====================
     
