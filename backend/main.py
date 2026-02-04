@@ -60,17 +60,16 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://cygnusa-guardian.vercel.app",  # Principal Vercel URL
-    "https://cygnusa-guardian-one.vercel.app", # Potential alternative
-    "*" # Fallback for dev/testing
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://cygnusa-guardian.vercel.app",
+        "https://cygnusa-guardian-one.vercel.app",
+    ],
+    # Better for production: allow any vercel subdomain if needed
+    allow_origin_regex=r"https://cygnusa-guardian.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
