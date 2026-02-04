@@ -152,20 +152,26 @@ def root():
 @app.get("/api/health")
 def health_check():
     """Detailed health check"""
-    db_ok = db.check_connection()
+    db_ok = False
     user_count = 0
     candidate_count = 0
+    db_error = None
     
-    if db_ok:
-        try:
-            user_count = len(db.get_all_users())
-            candidate_count = len(db.get_all_candidates())
-        except:
-            pass
+    try:
+        db_ok = db.check_connection()
+        if db_ok:
+            try:
+                user_count = len(db.get_all_users())
+                candidate_count = len(db.get_all_candidates())
+            except Exception as e:
+                db_error = f"count_error: {str(e)}"
+    except Exception as e:
+        db_error = str(e)
+        db_ok = False
             
     return {
         "status": "healthy" if db_ok else "degraded",
-        "database": "connected" if db_ok else "connection_failed",
+        "database": "connected" if db_ok else f"connection_failed ({db_error})" if db_error else "not_configured",
         "counts": {
             "users": user_count,
             "candidates": candidate_count
@@ -174,6 +180,7 @@ def health_check():
         "timestamp": datetime.now().isoformat(),
         "env": ENV
     }
+
 
 
 # ==================== Authentication ====================
