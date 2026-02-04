@@ -5,7 +5,10 @@ const cleanBase = rawApiBase.replace(/\/$/, '').replace(/\/api$/, '');
 const API_BASE = `${cleanBase}/api`;
 export const BASE_URL = cleanBase;
 
-console.log('🌐 Cygnusa Guardian API Initialized:', { API_BASE, BASE_URL, MODE: import.meta.env.MODE });
+console.log(`%c 🌐 Cygnusa Guardian API Initialized `, 'background: #2563eb; color: white; font-weight: bold; border-radius: 4px; padding: 2px 4px;');
+console.log(`📍 API_BASE: ${API_BASE}`);
+console.log(`📍 BASE_URL: ${BASE_URL}`);
+console.log(`📍 ENV_MODE: ${import.meta.env.MODE}`);
 
 // Create axios instance with defaults
 const http = axios.create({

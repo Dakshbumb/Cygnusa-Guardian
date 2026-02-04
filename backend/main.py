@@ -3,7 +3,7 @@ Cygnusa Guardian - FastAPI Main Application
 Central API for the Glass-Box Hiring System
 """
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -58,6 +58,18 @@ app = FastAPI(
     description="Glass-Box AI Hiring System - Every decision is explainable",
     version="1.0.0"
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Verbose logging for debugging production connectivity"""
+    logger.info(f"🔍 REQUEST: {request.method} {request.url}")
+    try:
+        response = await call_next(request)
+        logger.info(f"✨ RESPONSE: {response.status_code} for {request.url}")
+        return response
+    except Exception as e:
+        logger.error(f"💥 ERROR: {str(e)}", exc_info=True)
+        raise
 
 # CORS middleware for frontend
 app.add_middleware(
