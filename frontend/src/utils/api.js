@@ -5,6 +5,8 @@ const cleanBase = rawApiBase.replace(/\/$/, '').replace(/\/api$/, '');
 const API_BASE = `${cleanBase}/api`;
 export const BASE_URL = cleanBase;
 
+console.log('🌐 Cygnusa Guardian API Initialized:', { API_BASE, BASE_URL, MODE: import.meta.env.MODE });
+
 // Create axios instance with defaults
 const http = axios.create({
     baseURL: API_BASE,

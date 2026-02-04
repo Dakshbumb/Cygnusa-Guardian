@@ -14,7 +14,7 @@ export function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Redirect if already logged in
+    // Redirect if already logged in and check backend health
     useEffect(() => {
         const token = localStorage.getItem('token');
         const userRole = localStorage.getItem('role');
@@ -23,10 +23,23 @@ export function LoginPage() {
             if (userRole === 'recruiter' || userRole === 'admin') {
                 navigate('/recruiter/dashboard');
             } else {
-                // Candidates go to resume analysis to start their assessment
                 navigate('/resume-analysis');
             }
         }
+
+        // Proactive health check
+        const checkHealth = async () => {
+            try {
+                await api.health();
+                console.log('✅ Backend connectivity verified');
+            } catch (err) {
+                console.warn('⚠️ Backend unreachable or CORS blocked:', err.message);
+                if (import.meta.env.PROD) {
+                    setError('The backend server is currently unreachable. Please check the API configuration.');
+                }
+            }
+        };
+        checkHealth();
     }, [navigate]);
 
     const handleLogin = async (e) => {
