@@ -366,7 +366,233 @@ except Exception as e:
         return False
 
 
-# ==================== Demo Test Cases ====================
+# ==================== Demo MCQs ====================
+
+DEMO_MCQS = {
+    # Tech - AI/ML
+    "ml_q1": {
+        "question": "Which loss function is most commonly used for a binary classification problem?",
+        "competency": "Machine Learning",
+        "options": {"A": "Mean Squared Error", "B": "Binary Cross-Entropy", "C": "Hinge Loss", "D": "MAE"},
+        "correct": "B"
+    },
+    "ml_q2": {
+        "question": "What is the purpose of 'Dropout' in a Neural Network?",
+        "competency": "Deep Learning",
+        "options": {"A": "Increase learning rate", "B": "Prevent overfitting", "C": "Batch data", "D": "Feature scaling"},
+        "correct": "B"
+    },
+    "ml_q3": {
+        "question": "In NLP, what does the 'Attention' mechanism solve?",
+        "competency": "NLP",
+        "options": {"A": "Memory limits", "B": "Long-range dependencies", "C": "Tokenization speed", "D": "Dictionary size"},
+        "correct": "B"
+    },
+    # Tech - Frontend
+    "fe_q1": {
+        "question": "Which React hook is used to perform side effects?",
+        "competency": "React",
+        "options": {"A": "useState", "B": "useEffect", "C": "useMemo", "D": "useReducer"},
+        "correct": "B"
+    },
+    "fe_q2": {
+        "question": "What is the Big O complexity of searching an element in a balanced Binary Search Tree?",
+        "competency": "Data Structures",
+        "options": {"A": "O(1)", "B": "O(n)", "C": "O(log n)", "D": "O(n^2)"},
+        "correct": "C"
+    },
+    "fe_q3": {
+        "question": "Which CSS property is used to create a flex container?",
+        "competency": "CSS",
+        "options": {"A": "position: flex", "B": "display: flex", "C": "float: flex", "D": "align: flex"},
+        "correct": "B"
+    },
+    # Tech - Backend
+    "be_q1": {
+        "question": "Which HTTP method is typically used to update an existing resource?",
+        "competency": "Web APIs",
+        "options": {"A": "GET", "B": "POST", "C": "PUT/PATCH", "D": "DELETE"},
+        "correct": "C"
+    },
+    "be_q2": {
+        "question": "What is the primary purpose of a database index?",
+        "competency": "Databases",
+        "options": {"A": "Encrypt data", "B": "Speed up retrieval", "C": "Ensure redundancy", "D": "Validate input"},
+        "correct": "B"
+    },
+    "be_q3": {
+        "question": "In Python, which keyword is used to handle exceptions?",
+        "competency": "Python",
+        "options": {"A": "catch", "B": "error", "C": "try/except", "D": "handle"},
+        "correct": "C"
+    },
+    # Finance - Investment Banking
+    "ib_q1": {
+        "question": "What does WACC stand for?",
+        "competency": "Corporate Finance",
+        "options": {"A": "Weighted Average Cost of Capital", "B": "Wide Area Capital Control", "C": "Weekly Asset Cost Calculation", "D": "World Association of Capital Credit"},
+        "correct": "A"
+    },
+    "ib_q2": {
+        "question": "In a DCF analysis, what does 'terminal value' represent?",
+        "competency": "Valuation",
+        "options": {"A": "Value at start", "B": "Value beyond the forecast period", "C": "Liquidated value", "D": "Equity value"},
+        "correct": "B"
+    },
+    "ib_q3": {
+        "question": "Which financial statement links Net Income to Cash?",
+        "competency": "Accounting",
+        "options": {"A": "Balance Sheet", "B": "Income Statement", "C": "Cash Flow Statement", "D": "Equity Statement"},
+        "correct": "C"
+    },
+    # Blockchain
+    "bc_q1": {
+        "question": "What is a 'Gas fee' in Ethereum?",
+        "competency": "Blockchain Mechanics",
+        "options": {"A": "Registration fee", "B": "Computation cost", "C": "Insurance tax", "D": "Storage rent"},
+        "correct": "B"
+    },
+    # Cybersecurity
+    "sec_q1": {
+        "question": "What type of attack involves an attacker placing themselves between two parties?",
+        "competency": "Network Security",
+        "options": {"A": "Phishing", "B": "Man-in-the-Middle (MITM)", "C": "SQL Injection", "D": "DDoS"},
+        "correct": "B"
+    },
+    "sec_q2": {
+        "question": "What is the primary purpose of Salting in password storage?",
+        "competency": "Cryptography",
+        "options": {"A": "Encrypt password", "B": "Prevent rainbow table attacks", "C": "Speed up hash", "D": "Compress data"},
+        "correct": "B"
+    },
+    # Tech - DevOps & Cloud
+    "devops_q1": {
+        "question": "What does CI/CD stand for?",
+        "competency": "DevOps Practices",
+        "options": {"A": "Continuous Integration / Continuous Deployment", "B": "Cloud Infrastructure / Cloud Design", "C": "Control Interface / Connection Design", "D": "Centralized ID / Collaborative Data"},
+        "correct": "A"
+    },
+    "devops_q2": {
+        "question": "Which tool is primarily used for Infrastructure as Code (IaC)?",
+        "competency": "Tooling",
+        "options": {"A": "Jenkins", "B": "Terraform", "C": "Docker", "D": "Excel"},
+        "correct": "B"
+    },
+    "cloud_q1": {
+        "question": "In AWS, what is the primary function of an S3 bucket?",
+        "competency": "Storage",
+        "options": {"A": "Run code", "B": "Object storage", "C": "Database indexing", "D": "Virtual networking"},
+        "correct": "B"
+    },
+    "cloud_q2": {
+        "question": "What is 'Serverless' computing?",
+        "competency": "Cloud Architecture",
+        "options": {"A": "Computing without computers", "B": "Developer doesn't manage servers", "C": "Permanent hardware allocation", "D": "Local execution"},
+        "correct": "B"
+    },
+    # Data Science & Engineering
+    "ds_q1": {
+        "question": "Which Python library is standard for data manipulation and analysis?",
+        "competency": "Tooling",
+        "options": {"A": "Flask", "B": "Pandas", "C": "Pytest", "D": "Requests"},
+        "correct": "B"
+    },
+    "ds_q2": {
+        "question": "What is p-value used for in statistics?",
+        "competency": "Statistics",
+        "options": {"A": "Calculate mean", "B": "Test hypothesis significance", "C": "Plot graphs", "D": "Sort data"},
+        "correct": "B"
+    },
+    "de_q1": {
+        "question": "What does ETL stand for in data engineering?",
+        "competency": "Data Pipelines",
+        "options": {"A": "Extract, Transform, Load", "B": "Encrypt, Transfer, List", "C": "Entry, Timing, Logging", "D": "External, Temporary, Local"},
+        "correct": "A"
+    },
+    "de_q2": {
+        "question": "In Spark, what is an RDD?",
+        "competency": "Distributed Computing",
+        "options": {"A": "Random Data Disk", "B": "Resilient Distributed Dataset", "C": "Rapid Delivery Driver", "D": "Remote Data Database"},
+        "correct": "B"
+    },
+    # QA & Testing
+    "qa_q1": {
+        "question": "What is 'Regression Testing'?",
+        "competency": "Testing Methodology",
+        "options": {"A": "Testing new features", "B": "Ensuring changes didn't break existing features", "C": "Performance testing", "D": "Security audit"},
+        "correct": "B"
+    },
+    "qa_q2": {
+        "question": "What is a 'Unit Test'?",
+        "competency": "Testing Levels",
+        "options": {"A": "Testing the whole system", "B": "Testing individual small components in isolation", "C": "User acceptance test", "D": "Integration test"},
+        "correct": "B"
+    },
+    # specialized finance
+    "fa_q1": {
+        "question": "What is the formula for Gross Margin?",
+        "competency": "Accounting",
+        "options": {"A": "(Revenue - COGS) / Revenue", "B": "Revenue - Expenses", "C": "Net Income / Sales", "D": "Assets - Liabilities"},
+        "correct": "A"
+    },
+    "risk_q1": {
+        "question": "What does VAR stand for in risk management?",
+        "competency": "Market Risk",
+        "options": {"A": "Value at Risk", "B": "Variance as Result", "C": "Variable Asset Rate", "D": "Virtual Access Record"},
+        "correct": "A"
+    },
+    "port_q1": {
+        "question": "What is the 'Sharpe Ratio' used for?",
+        "competency": "Portfolio Analysis",
+        "options": {"A": "Measure return only", "B": "Measure risk-adjusted return", "C": "Calculate dividends", "D": "Track volume"},
+        "correct": "B"
+    },
+    "comp_q1": {
+        "question": "What does KYC stand for in banking compliance?",
+        "competency": "Regulatory",
+        "options": {"A": "Know Your Customer", "B": "Keep Your Capital", "C": "Know Your Competitor", "D": "Key Yield Calculation"},
+        "correct": "A"
+    },
+    "audit_q1": {
+        "question": "What is the primary objective of an internal audit?",
+        "competency": "Auditing",
+        "options": {"A": "Find fraud only", "B": "Evaluate risk management and controls", "C": "Prepare tax returns", "D": "Sign off on IPOs"},
+        "correct": "B"
+    },
+    "tax_q1": {
+        "question": "In corporate tax, what is 'VAT'?",
+        "competency": "Taxation",
+        "options": {"A": "Value Added Tax", "B": "Variable Asset Transfer", "C": "Virtual Account Transaction", "D": "Volume Adjusted Tax"},
+        "correct": "A"
+    },
+    "ftp_q1": {
+        "question": "Which of these is a core component of 'Open Banking'?",
+        "competency": "FinTech",
+        "options": {"A": "Private ledgers", "B": "Standardized APIs for data sharing", "C": "Physical branches", "D": "Centralized ID storage"},
+        "correct": "B"
+    },
+    "fs_q1": {
+        "question": "What is a 'Fullstack' engineer expected to handle?",
+        "competency": "Engineering",
+        "options": {"A": "Only UI", "B": "Only DB", "C": "Both Frontend and Backend", "D": "Only mobile"},
+        "correct": "C"
+    },
+    "quant_q1": {
+        "question": "In quantitative finance, what is the 'Black-Scholes' model used for?",
+        "competency": "Quantitative Analysis",
+        "options": {"A": "Pricing options", "B": "Predicting weather", "C": "Sorting lists", "D": "Managing personnel"},
+        "correct": "A"
+    },
+    "bc_q2": {
+        "question": "What is the primary difference between Proof of Work (PoW) and Proof of Stake (PoS)?",
+        "competency": "Consensus",
+        "options": {"A": "PoW uses hardware, PoS uses capital", "B": "PoW is faster", "C": "PoS is older", "D": "No difference"},
+        "correct": "A"
+    }
+}
+
+
+# ==================== Demo Questions ====================
 
 DEMO_QUESTIONS = {
     "fibonacci": {

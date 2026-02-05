@@ -14,6 +14,15 @@
         "critical_skills": [
             "python",
             "pytorch"
+        ],
+        "coding_question_ids": [
+            "fibonacci",
+            "two_sum"
+        ],
+        "mcq_ids": [
+            "ml_q1",
+            "ml_q2",
+            "ml_q3"
         ]
     },
     {
@@ -31,6 +40,15 @@
         "critical_skills": [
             "javascript",
             "react"
+        ],
+        "coding_question_ids": [
+            "palindrome",
+            "reverse_words"
+        ],
+        "mcq_ids": [
+            "fe_q1",
+            "fe_q2",
+            "fe_q3"
         ]
     },
     {
@@ -48,6 +66,15 @@
         "critical_skills": [
             "python",
             "fastapi"
+        ],
+        "coding_question_ids": [
+            "fibonacci",
+            "palindrome"
+        ],
+        "mcq_ids": [
+            "be_q1",
+            "be_q2",
+            "be_q3"
         ]
     },
     {
@@ -65,6 +92,15 @@
         "critical_skills": [
             "kubernetes",
             "terraform"
+        ],
+        "coding_question_ids": [
+            "reverse_words",
+            "fibonacci"
+        ],
+        "mcq_ids": [
+            "devops_q1",
+            "devops_q2",
+            "devops_q3"
         ]
     },
     {
@@ -82,6 +118,15 @@
         "critical_skills": [
             "gcp",
             "azure"
+        ],
+        "coding_question_ids": [
+            "two_sum",
+            "palindrome"
+        ],
+        "mcq_ids": [
+            "cloud_q1",
+            "cloud_q2",
+            "cloud_q3"
         ]
     },
     {
@@ -98,6 +143,15 @@
         "critical_skills": [
             "penetration testing",
             "network security"
+        ],
+        "coding_question_ids": [
+            "reverse_words",
+            "palindrome"
+        ],
+        "mcq_ids": [
+            "sec_q1",
+            "sec_q2",
+            "sec_q3"
         ]
     },
     {
@@ -115,6 +169,15 @@
         "critical_skills": [
             "python",
             "statistics"
+        ],
+        "coding_question_ids": [
+            "fibonacci",
+            "two_sum"
+        ],
+        "mcq_ids": [
+            "ds_q1",
+            "ds_q2",
+            "ds_q3"
         ]
     },
     {
@@ -132,6 +195,15 @@
         "critical_skills": [
             "spark",
             "etl"
+        ],
+        "coding_question_ids": [
+            "two_sum",
+            "fibonacci"
+        ],
+        "mcq_ids": [
+            "de_q1",
+            "de_q2",
+            "de_q3"
         ]
     },
     {
@@ -149,6 +221,15 @@
         "critical_skills": [
             "selenium",
             "jest"
+        ],
+        "coding_question_ids": [
+            "palindrome",
+            "reverse_words"
+        ],
+        "mcq_ids": [
+            "qa_q1",
+            "qa_q2",
+            "qa_q3"
         ]
     },
     {
@@ -167,6 +248,15 @@
             "typescript",
             "node",
             "react"
+        ],
+        "coding_question_ids": [
+            "two_sum",
+            "reverse_words"
+        ],
+        "mcq_ids": [
+            "fs_q1",
+            "fs_q2",
+            "fs_q3"
         ]
     },
     {
@@ -184,6 +274,15 @@
         "critical_skills": [
             "financial modeling",
             "valuation"
+        ],
+        "coding_question_ids": [
+            "fibonacci",
+            "two_sum"
+        ],
+        "mcq_ids": [
+            "ib_q1",
+            "ib_q2",
+            "ib_q3"
         ]
     },
     {
@@ -200,6 +299,15 @@
         "critical_skills": [
             "budgeting",
             "forecasting"
+        ],
+        "coding_question_ids": [
+            "fibonacci",
+            "palindrome"
+        ],
+        "mcq_ids": [
+            "fa_q1",
+            "fa_q2",
+            "fa_q3"
         ]
     },
     {
@@ -216,6 +324,15 @@
         "critical_skills": [
             "stochastic calculus",
             "c++"
+        ],
+        "coding_question_ids": [
+            "fibonacci",
+            "two_sum"
+        ],
+        "mcq_ids": [
+            "quant_q1",
+            "quant_q2",
+            "quant_q3"
         ]
     },
     {
@@ -232,6 +349,15 @@
         "critical_skills": [
             "credit risk",
             "compliance"
+        ],
+        "coding_question_ids": [
+            "reverse_words",
+            "palindrome"
+        ],
+        "mcq_ids": [
+            "risk_q1",
+            "risk_q2",
+            "risk_q3"
         ]
     },
     {
@@ -248,6 +374,15 @@
         "critical_skills": [
             "asset allocation",
             "equity research"
+        ],
+        "coding_question_ids": [
+            "two_sum",
+            "fibonacci"
+        ],
+        "mcq_ids": [
+            "port_q1",
+            "port_q2",
+            "port_q3"
         ]
     },
     {
@@ -264,6 +399,15 @@
         "critical_skills": [
             "aml",
             "kyc"
+        ],
+        "coding_question_ids": [
+            "reverse_words",
+            "palindrome"
+        ],
+        "mcq_ids": [
+            "comp_q1",
+            "comp_q2",
+            "comp_q3"
         ]
     },
     {
@@ -280,6 +424,15 @@
         "critical_skills": [
             "tax planning",
             "accounting"
+        ],
+        "coding_question_ids": [
+            "fibonacci",
+            "two_sum"
+        ],
+        "mcq_ids": [
+            "tax_q1",
+            "tax_q2",
+            "tax_q3"
         ]
     },
     {
@@ -296,6 +449,15 @@
         "critical_skills": [
             "api integration",
             "payments"
+        ],
+        "coding_question_ids": [
+            "reverse_words",
+            "two_sum"
+        ],
+        "mcq_ids": [
+            "ftp_q1",
+            "ftp_q2",
+            "ftp_q3"
         ]
     },
     {
@@ -312,6 +474,15 @@
         "critical_skills": [
             "internal audit",
             "gaap"
+        ],
+        "coding_question_ids": [
+            "fibonacci",
+            "palindrome"
+        ],
+        "mcq_ids": [
+            "audit_q1",
+            "audit_q2",
+            "audit_q3"
         ]
     },
     {
@@ -328,6 +499,15 @@
         "critical_skills": [
             "solidity",
             "web3.js"
+        ],
+        "coding_question_ids": [
+            "palindrome",
+            "two_sum"
+        ],
+        "mcq_ids": [
+            "bc_q1",
+            "bc_q2",
+            "bc_q3"
         ]
     }
 ]

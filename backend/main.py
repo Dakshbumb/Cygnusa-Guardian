@@ -42,7 +42,7 @@ from models import (
     VideoSnapshot, VideoEvidence, User, UserRole, LoginRequest, LoginResponse
 )
 from resume_parser import ResumeGatekeeper
-from code_executor import CodeSandbox, DEMO_QUESTIONS
+from code_executor import CodeSandbox, DEMO_QUESTIONS, DEMO_MCQS
 from decision_engine import ExplainableDecisionEngine
 from database import Database
 from resume_validator import ResumeValidator
@@ -594,63 +594,74 @@ async def start_assessment(candidate_id: str = Form(...)):
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
     
+    # Determine role-specific questions
+    coding_qs = []
+    mcqs = []
+    
+    try:
+        with open("job_roles.json", "r") as f:
+            all_roles = json.load(f)
+            # Match by title (what's stored in candidate.job_title) or ID
+            target_role = next(
+                (r for r in all_roles if r["title"] == candidate.job_title or r["id"] == candidate.job_title), 
+                next((r for r in all_roles if r["id"] == "backend_developer"), all_roles[0])
+            )
+            
+            # Load coding questions
+            for q_id in target_role.get("coding_question_ids", ["fibonacci"]):
+                if q_id in DEMO_QUESTIONS:
+                    q = DEMO_QUESTIONS[q_id]
+                    coding_qs.append({
+                        "id": f"q_{q_id}",
+                        "title": q["title"],
+                        "description": q["description"],
+                        "template": q["template"],
+                        "language": "python"
+                    })
+            
+            # Load MCQs
+            for m_id in target_role.get("mcq_ids", ["be_q1"]):
+                if m_id in DEMO_MCQS:
+                    m = DEMO_MCQS[m_id]
+                    mcqs.append({
+                        "id": m_id,
+                        "question": m["question"],
+                        "competency": m["competency"],
+                        "options": m["options"],
+                        "correct": m["correct"]
+                    })
+            
+            # Ensure at least some coding questions exist
+            if not coding_qs:
+                coding_qs = [{"id": "q_fibonacci", **DEMO_QUESTIONS["fibonacci"], "language": "python"}]
+            
+            # Ensure at least some MCQs exist
+            if not mcqs:
+                # Absolute fallback to common questions
+                for fid in ["be_q2", "fe_q2", "ml_q1"]:
+                    if fid in DEMO_MCQS:
+                        m = DEMO_MCQS[fid]
+                        mcqs.append({
+                            "id": fid,
+                            "question": m["question"],
+                            "competency": m["competency"],
+                            "options": m["options"],
+                            "correct": m["correct"]
+                        })
+                    
+    except Exception as e:
+        logger.error(f"Failed to load role questions: {e}. Using fallback.")
+        # Minimal fallback
+        coding_qs = [{"id": "q_fibonacci", **DEMO_QUESTIONS["fibonacci"], "language": "python"}]
+        mcqs = [{"id": "be_q1", **DEMO_MCQS["be_q1"]}]
+
     # Build assessment payload
     assessment = {
         "candidate_id": candidate_id,
         "candidate_name": candidate.name,
         "job_title": candidate.job_title,
-        
-        # Coding questions from demo set
-        "coding_questions": [
-            {
-                "id": f"q{i+1}_{key}",
-                "title": q["title"],
-                "description": q["description"],
-                "template": q["template"],
-                "language": "python"
-            }
-            for i, (key, q) in enumerate(list(DEMO_QUESTIONS.items())[:2])  # First 2 questions
-        ],
-        
-        # Scenario MCQs
-        "mcqs": [
-            {
-                "id": "mcq1",
-                "question": "Your team disagrees on the implementation approach. What do you do?",
-                "competency": "Collaboration",
-                "options": {
-                    "A": "Insist on your approach since you know it's best",
-                    "B": "Call a team meeting to discuss pros and cons objectively",
-                    "C": "Escalate to manager to make the decision",
-                    "D": "Implement both approaches and compare results"
-                },
-                "correct": "B"
-            },
-            {
-                "id": "mcq2",
-                "question": "You discover a critical bug 1 hour before deployment. What do you do?",
-                "competency": "Problem Solving",
-                "options": {
-                    "A": "Fix it immediately, even if untested",
-                    "B": "Deploy anyway, fix in hotfix later",
-                    "C": "Inform stakeholders and delay deployment",
-                    "D": "Try to hide the bug and hope no one notices"
-                },
-                "correct": "C"
-            },
-            {
-                "id": "mcq3",
-                "question": "A colleague's code has obvious issues. How do you approach code review?",
-                "competency": "Communication",
-                "options": {
-                    "A": "Approve without comment to avoid conflict",
-                    "B": "List all issues harshly to establish standards",
-                    "C": "Provide constructive feedback with specific suggestions",
-                    "D": "Reject without explanation"
-                },
-                "correct": "C"
-            }
-        ],
+        "coding_questions": coding_qs,
+        "mcqs": mcqs,
         
         # Psychometric sliders
         "psychometric_sliders": [
