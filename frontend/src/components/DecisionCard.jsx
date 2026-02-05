@@ -21,6 +21,7 @@ export function DecisionCard({ candidateId, decision, candidate, evidence }) {
         HIRE: "bg-success-900/20 border-success-500/50 text-success-400",
         PROCEED: "bg-primary-900/20 border-primary-500/50 text-primary-400",
         WATCHLIST: "bg-warning-900/20 border-warning-500/50 text-warning-400",
+        CONDITIONAL: "bg-warning-900/20 border-warning-500/50 text-warning-400",
         NO_HIRE: "bg-danger-900/20 border-danger-500/50 text-danger-400"
     };
 
@@ -174,7 +175,7 @@ export function DecisionCard({ candidateId, decision, candidate, evidence }) {
 
             {/* Body Section - Evidence Panel */}
             <div className="p-8 space-y-8">
-                <EvidencePanel evidence={evidence} candidateId={candidateId} />
+                <EvidencePanel evidence={evidence} candidate={candidate} candidateId={candidateId} />
 
                 {/* Full Forensic Audit Table (Mirroring Export) */}
                 {evidence.integrity?.events?.length > 0 && (
@@ -237,7 +238,7 @@ export function DecisionCard({ candidateId, decision, candidate, evidence }) {
 /**
  * EvidencePanel - Displays evidence breakdown for each assessment area
  */
-export function EvidencePanel({ evidence }) {
+export function EvidencePanel({ evidence, candidate, candidateId }) {
     if (!evidence) return null;
 
     const sections = [

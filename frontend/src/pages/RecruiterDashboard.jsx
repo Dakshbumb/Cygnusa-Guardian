@@ -313,25 +313,31 @@ export function RecruiterDashboard() {
                                     <ShieldCheck className="text-primary-500" size={18} />
                                 </div>
                                 <div>
-                                    <h1 className="font-bold text-neutral-100 text-sm tracking-tight leading-none mb-1">CANDIDATE_REPORT</h1>
-                                    <p className="text-[10px] text-primary-400 font-mono tracking-wider uppercase opacity-80 leading-none">Ref: {candidateId.substring(0, 8)}</p>
+                                    <h1 className="font-bold text-neutral-100 text-sm tracking-tight leading-none mb-1">
+                                        {candidateId ? 'CANDIDATE_REPORT' : 'RECRUITER_INTELLIGENCE_ROSTER'}
+                                    </h1>
+                                    <p className="text-[10px] text-primary-400 font-mono tracking-wider uppercase opacity-80 leading-none">
+                                        {candidateId ? `Ref: ${candidateId.substring(0, 12)}` : 'SECURE_NODE: ACTIVE'}
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <button className="flex items-center gap-2 px-3 py-1.5 text-neutral-400 hover:text-white hover:bg-surface-overlay rounded-lg transition-colors font-mono text-[10px] uppercase tracking-wider border border-surface-overlay/50">
-                                <Share2 size={14} />
-                                <span>Share_Access</span>
-                            </button>
-                            <button
-                                onClick={() => api.exportReport(candidateId)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-all shadow-lg shadow-primary-900/30 font-mono text-[10px] uppercase tracking-wider border border-primary-500"
-                            >
-                                <Download size={14} />
-                                <span>Export_Case_File</span>
-                            </button>
-                        </div>
+                        {candidateId && (
+                            <div className="flex items-center gap-3">
+                                <button className="flex items-center gap-2 px-3 py-1.5 text-neutral-400 hover:text-white hover:bg-surface-overlay rounded-lg transition-colors font-mono text-[10px] uppercase tracking-wider border border-surface-overlay/50">
+                                    <Share2 size={14} />
+                                    <span>Share_Access</span>
+                                </button>
+                                <button
+                                    onClick={() => api.exportReport(candidateId)}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-all shadow-lg shadow-primary-900/30 font-mono text-[10px] uppercase tracking-wider border border-primary-500"
+                                >
+                                    <Download size={14} />
+                                    <span>Export_Case_File</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>
@@ -412,7 +418,7 @@ export function RecruiterDashboard() {
                                     </h3>
                                 </div>
                                 <div className="p-6">
-                                    <EvidencePanel evidence={evidence} />
+                                    <EvidencePanel evidence={evidence} candidate={candidate} />
                                 </div>
                             </div>
                         )}

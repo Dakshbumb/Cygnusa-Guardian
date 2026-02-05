@@ -19,6 +19,7 @@ export function DecisionTimeline({ nodes = [] }) {
         CODE: Code,
         INTEGRITY: ShieldAlert,
         MCQ: Brain,
+        TEXT: Terminal,
         FINAL: CheckCircle2,
     };
 
@@ -124,7 +125,7 @@ export function DecisionTimeline({ nodes = [] }) {
 
                             <div className="flex gap-6">
                                 <div className={`w-1.5 rounded-full ${selectedNode.impact === 'positive' ? 'bg-success-500' :
-                                        selectedNode.impact === 'negative' ? 'bg-danger-500' : 'bg-primary-500'
+                                    selectedNode.impact === 'negative' ? 'bg-danger-500' : 'bg-primary-500'
                                     }`} />
 
                                 <div className="space-y-4 flex-1">
@@ -151,7 +152,7 @@ export function DecisionTimeline({ nodes = [] }) {
                                             <Activity size={14} className="text-primary-400" />
                                             <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">Impact_Weight:</span>
                                             <span className={`text-[10px] font-mono font-bold uppercase ${selectedNode.impact === 'positive' ? 'text-success-400' :
-                                                    selectedNode.impact === 'negative' ? 'text-danger-400' : 'text-primary-400'
+                                                selectedNode.impact === 'negative' ? 'text-danger-400' : 'text-primary-400'
                                                 }`}>{selectedNode.impact}</span>
                                         </div>
                                     </div>
