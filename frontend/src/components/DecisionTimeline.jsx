@@ -56,8 +56,11 @@ export function DecisionTimeline({ nodes = [] }) {
             <div className="p-8">
                 {/* Scrollable Timeline Scrubber */}
                 <div className="relative overflow-x-auto custom-scrollbar pb-6 flex items-center min-h-[140px]">
-                    {/* Connecting Line */}
-                    <div className="absolute top-[48px] left-0 right-0 h-0.5 bg-surface-overlay" />
+                    {/* Connecting Line - positioned through center of 48px circles */}
+                    <div
+                        className="absolute h-0.5 bg-gradient-to-r from-surface-overlay via-neutral-600 to-surface-overlay"
+                        style={{ top: '24px', left: '2rem', right: '2rem' }}
+                    />
 
                     <div className="flex gap-16 min-w-max px-8">
                         {sortedNodes.map((node, index) => {
