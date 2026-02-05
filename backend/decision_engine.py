@@ -118,6 +118,48 @@ class ExplainableDecisionEngine:
                 model_used = "fallback_rules"
                 raw_response = json.dumps(decision_data)
         
+        # Ensure evidentiary_mapping has sensible defaults if AI didn't return it
+        ev_mapping = decision_data.get('evidentiary_mapping', {})
+        if not ev_mapping:
+            # Generate based on evidence scores
+            resume_score = evidence_summary.get('resume', {}).get('match_score', 0)
+            coding_score = evidence_summary.get('coding', {}).get('avg_pass_rate', 0)
+            mcq_score = evidence_summary.get('mcqs', {}).get('pass_rate', 0)
+            integrity_violations = evidence_summary.get('integrity', {}).get('total_violations', 0)
+            
+            ev_mapping = {
+                'resume': 'primary_driver' if resume_score >= 70 else ('supporting' if resume_score >= 40 else 'negative'),
+                'coding': 'primary_driver' if coding_score >= 70 else ('supporting' if coding_score >= 40 else 'negative'),
+                'mcqs': 'supporting' if mcq_score >= 60 else 'neutral',
+                'integrity': 'negative' if integrity_violations > 5 else 'neutral',
+                'behavioral': 'neutral'
+            }
+        
+        # Ensure cognitive_profile has sensible defaults if AI didn't return it
+        cog_profile = decision_data.get('cognitive_profile')
+        if not cog_profile:
+            coding_score = evidence_summary.get('coding', {}).get('avg_pass_rate', 0)
+            mcq_score = evidence_summary.get('mcqs', {}).get('pass_rate', 0)
+            
+            # Default scores based on performance
+            abstraction = min(10, max(2, coding_score / 10))
+            speed = min(10, max(2, 5))  # Default mid value
+            precision = min(10, max(2, (coding_score + mcq_score) / 20))
+            creativity = min(10, max(2, 5))  # Default mid value
+            
+            cog_profile = {
+                'primary_style': 'Pragmatic_Generalist',
+                'secondary_style': None,
+                'cognitive_scores': {
+                    'abstraction': abstraction,
+                    'execution_speed': speed,
+                    'precision': precision,
+                    'creativity': creativity
+                },
+                'team_gap_fit': 'Standards-based generalist approach',
+                'archetype_description': 'Performance-based profile derived from assessment scores.'
+            }
+        
         return FinalDecision(
             candidate_id=candidate_id,
             outcome=decision_data.get('outcome', 'NO_HIRE'),
@@ -128,9 +170,9 @@ class ExplainableDecisionEngine:
             role_fit=decision_data.get('role_fit', 'Unable to determine'),
             next_steps=decision_data.get('next_steps', 'Manual review required'),
             evidence_summary=evidence_summary,
-            evidentiary_mapping=decision_data.get('evidentiary_mapping', {}),
+            evidentiary_mapping=ev_mapping,
             forensic_trace=decision_data.get('forensic_trace', []),
-            cognitive_profile=decision_data.get('cognitive_profile'),
+            cognitive_profile=cog_profile,
             audit_trail={
                 'prompt': prompt,
                 'raw_response': raw_response,
