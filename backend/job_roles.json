@@ -1,88 +1,333 @@
 [
     {
-        "id": "ai_engineer",
-        "title": "AI Engineer",
+        "id": "ai_ml_engineer",
+        "title": "AI/ML Engineer",
         "required_skills": [
             "python",
-            "machine learning",
             "pytorch",
             "tensorflow",
-            "scikit-learn",
             "nlp",
-            "transformers"
+            "transformers",
+            "scikit-learn",
+            "sql"
         ],
         "critical_skills": [
             "python",
-            "machine learning"
+            "pytorch"
         ]
     },
     {
-        "id": "devops_intern",
-        "title": "DevOps Intern",
+        "id": "frontend_architect",
+        "title": "Frontend Architect",
         "required_skills": [
-            "linux",
-            "git",
+            "javascript",
+            "typescript",
+            "react",
+            "nextjs",
+            "tailwind",
+            "zustand",
+            "testing-library"
+        ],
+        "critical_skills": [
+            "javascript",
+            "react"
+        ]
+    },
+    {
+        "id": "backend_developer",
+        "title": "Backend Developer",
+        "required_skills": [
+            "python",
+            "fastapi",
+            "postgresql",
+            "redis",
             "docker",
-            "kubernetes",
-            "bash",
-            "jenkins",
-            "ansible"
+            "microservices",
+            "grpc"
         ],
         "critical_skills": [
-            "git",
-            "linux"
+            "python",
+            "fastapi"
         ]
     },
     {
-        "id": "cloud_engineer",
-        "title": "Cloud Engineer",
+        "id": "devops_engineer",
+        "title": "DevOps Engineer",
         "required_skills": [
             "aws",
-            "azure",
-            "gcp",
+            "kubernetes",
             "terraform",
-            "cloudformation",
-            "iam",
-            "s3"
+            "docker",
+            "jenkins",
+            "bash",
+            "prometheus"
         ],
         "critical_skills": [
-            "aws",
+            "kubernetes",
             "terraform"
         ]
     },
     {
-        "id": "fullstack_dev",
-        "title": "Fullstack Developer",
+        "id": "cloud_native_engineer",
+        "title": "Cloud Native Engineer",
         "required_skills": [
-            "javascript",
-            "react",
-            "nodejs",
-            "express",
-            "postgresql",
-            "tailwindcss",
-            "typescript"
+            "gcp",
+            "azure",
+            "serverless",
+            "iam",
+            "cloudformation",
+            "s3",
+            "lambda"
         ],
         "critical_skills": [
-            "javascript",
-            "react",
-            "nodejs"
+            "gcp",
+            "azure"
         ]
     },
     {
-        "id": "data_analyst",
-        "title": "Data Analyst",
+        "id": "cybersecurity_analyst",
+        "title": "Cybersecurity Analyst",
         "required_skills": [
-            "sql",
+            "penetration testing",
+            "siem",
+            "network security",
+            "firewall",
+            "ids/ips",
+            "kali linux"
+        ],
+        "critical_skills": [
+            "penetration testing",
+            "network security"
+        ]
+    },
+    {
+        "id": "data_scientist",
+        "title": "Data Scientist",
+        "required_skills": [
             "python",
             "pandas",
             "numpy",
+            "matplotlib",
+            "statistics",
             "tableau",
-            "power bi",
-            "excel"
+            "bigquery"
         ],
         "critical_skills": [
+            "python",
+            "statistics"
+        ]
+    },
+    {
+        "id": "data_engineer",
+        "title": "Data Engineer",
+        "required_skills": [
+            "spark",
+            "hadoop",
+            "airflow",
+            "kafka",
+            "etl",
+            "snowflake",
+            "dbt"
+        ],
+        "critical_skills": [
+            "spark",
+            "etl"
+        ]
+    },
+    {
+        "id": "qa_automation_engineer",
+        "title": "QA Automation Engineer",
+        "required_skills": [
+            "selenium",
+            "cypress",
+            "playwright",
+            "jest",
+            "cicd",
+            "jira",
+            "load testing"
+        ],
+        "critical_skills": [
+            "selenium",
+            "jest"
+        ]
+    },
+    {
+        "id": "fullstack_product_engineer",
+        "title": "Fullstack Product Engineer",
+        "required_skills": [
+            "typescript",
+            "node",
+            "react",
+            "graphql",
+            "mongodb",
+            "stripe api",
+            "firebase"
+        ],
+        "critical_skills": [
+            "typescript",
+            "node",
+            "react"
+        ]
+    },
+    {
+        "id": "investment_banker",
+        "title": "Investment Banker",
+        "required_skills": [
+            "financial modeling",
+            "valuation",
+            "m&a",
+            "excel",
+            "bloomberg terminal",
+            "dcf",
+            "lbo"
+        ],
+        "critical_skills": [
+            "financial modeling",
+            "valuation"
+        ]
+    },
+    {
+        "id": "financial_analyst",
+        "title": "Financial Analyst",
+        "required_skills": [
+            "budgeting",
+            "forecasting",
+            "variance analysis",
+            "p&l management",
+            "sap",
+            "excel vba"
+        ],
+        "critical_skills": [
+            "budgeting",
+            "forecasting"
+        ]
+    },
+    {
+        "id": "quantitative_researcher",
+        "title": "Quantitative Researcher",
+        "required_skills": [
+            "stochastic calculus",
+            "c++",
+            "python",
+            "algorithmic trading",
+            "econometrics",
+            "matlab"
+        ],
+        "critical_skills": [
+            "stochastic calculus",
+            "c++"
+        ]
+    },
+    {
+        "id": "risk_manager",
+        "title": "Risk Manager",
+        "required_skills": [
+            "var",
+            "stress testing",
+            "basel iii",
+            "compliance",
+            "credit risk",
+            "operational risk"
+        ],
+        "critical_skills": [
+            "credit risk",
+            "compliance"
+        ]
+    },
+    {
+        "id": "portfolio_manager",
+        "title": "Portfolio Manager",
+        "required_skills": [
+            "asset allocation",
+            "rebalancing",
+            "equity research",
+            "fixed income",
+            "sharpe ratio",
+            "alpha"
+        ],
+        "critical_skills": [
+            "asset allocation",
+            "equity research"
+        ]
+    },
+    {
+        "id": "compliance_officer",
+        "title": "Compliance Officer",
+        "required_skills": [
+            "aml",
+            "kyc",
+            "regulatory reporting",
+            "audit",
+            "fraud detection",
+            "finra"
+        ],
+        "critical_skills": [
+            "aml",
+            "kyc"
+        ]
+    },
+    {
+        "id": "tax_consultant",
+        "title": "Tax Consultant",
+        "required_skills": [
+            "tax planning",
+            "corporate tax",
+            "vat",
+            "gst",
+            "accounting",
+            "ifrs"
+        ],
+        "critical_skills": [
+            "tax planning",
+            "accounting"
+        ]
+    },
+    {
+        "id": "fintech_product_manager",
+        "title": "FinTech Product Manager",
+        "required_skills": [
+            "api integration",
+            "payments",
+            "user stories",
+            "agile",
             "sql",
-            "python"
+            "market research"
+        ],
+        "critical_skills": [
+            "api integration",
+            "payments"
+        ]
+    },
+    {
+        "id": "audit_associate",
+        "title": "Audit Associate",
+        "required_skills": [
+            "internal audit",
+            "gaap",
+            "sox compliance",
+            "tally",
+            "quickbooks",
+            "financial statements"
+        ],
+        "critical_skills": [
+            "internal audit",
+            "gaap"
+        ]
+    },
+    {
+        "id": "blockchain_developer",
+        "title": "Blockchain Developer",
+        "required_skills": [
+            "solidity",
+            "smart contracts",
+            "ethereum",
+            "web3.js",
+            "cryptography",
+            "rust"
+        ],
+        "critical_skills": [
+            "solidity",
+            "web3.js"
         ]
     }
 ]
