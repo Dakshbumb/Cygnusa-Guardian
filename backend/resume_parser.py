@@ -139,7 +139,7 @@ class ResumeGatekeeper:
                         page.extract_text() or "" 
                         for page in pdf.pages
                     ])
-                return text.lower()
+                return text.lower().replace("\x00", "")
             except Exception as e:
                 logger.error(f"PDF parsing error for {pdf_path}: {e}")
                 return ""
