@@ -55,6 +55,31 @@ class ResumeEvidence(BaseModel):
     missing_critical: List[str] = []
     experience_years: Optional[int] = None
     education: Optional[str] = None
+    # Claim Probing Engine fields
+    suspicious_claims: List["SuspiciousClaim"] = []
+    authenticity_score: Optional["ResumeAuthenticityScore"] = None
+
+
+class SuspiciousClaim(BaseModel):
+    """A resume claim flagged for verification"""
+    claim_id: str
+    claim_text: str              # The exact text from resume
+    claim_type: str              # cgpa, leadership, company, impact, experience
+    confidence_flag: str         # high, medium, low (how suspicious)
+    verification_prompt: str     # AI-generated probe question
+    context: str                 # Surrounding resume context
+    verified: Optional[bool] = None  # None=unprobed, True=passed, False=failed
+    response_quality: Optional[str] = None  # detailed, vague, no_response
+
+
+class ResumeAuthenticityScore(BaseModel):
+    """Overall resume authenticity assessment"""
+    overall_score: int = Field(ge=0, le=100)
+    claims_detected: int = 0
+    claims_verified: int = 0
+    claims_failed: int = 0
+    red_flags: List[str] = []
+    verification_status: Dict[str, str] = {}  # claim_id -> verified/unverified/suspect
 
 
 class TestCaseResult(BaseModel):

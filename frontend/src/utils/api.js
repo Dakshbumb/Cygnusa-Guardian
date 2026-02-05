@@ -202,6 +202,23 @@ export const api = {
         });
     },
 
+    // ==================== Claim Probing Engine ====================
+    getClaimProbes: (candidateId) => http.get(`/assessment/claim-probes/${candidateId}`),
+    submitClaimProbe: async (candidateId, claimId, claimText, probeQuestion, answer, claimType = 'general') => {
+        const fd = createFormData({
+            candidate_id: candidateId,
+            claim_id: claimId,
+            claim_text: claimText,
+            probe_question: probeQuestion,
+            answer: answer,
+            claim_type: claimType
+        });
+        return http.post('/assessment/submit-claim-probe', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
+    getAuthenticityScore: (candidateId) => http.get(`/assessment/authenticity-score/${candidateId}`),
+
     // ==================== Integrity ====================
     logIntegrity: async (candidateId, eventType, severity, context = null) => {
         const fd = createFormData({

@@ -906,6 +906,157 @@ async def submit_shadow_probe(
     }
 
 
+# ==================== CLAIM PROBING ENGINE ====================
+
+@app.get("/api/assessment/claim-probes/{candidate_id}")
+async def get_claim_probes(candidate_id: str):
+    """
+    Get all suspicious claims flagged for verification.
+    These are resume claims that require probing during assessment.
+    """
+    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    # Get claims from resume evidence
+    claims = []
+    if candidate.resume_evidence and candidate.resume_evidence.suspicious_claims:
+        claims = [c.model_dump() for c in candidate.resume_evidence.suspicious_claims]
+    
+    return {
+        "success": True,
+        "candidate_id": candidate_id,
+        "total_claims": len(claims),
+        "claims": claims
+    }
+
+
+@app.post("/api/assessment/submit-claim-probe")
+async def submit_claim_probe(
+    candidate_id: str = Form(...),
+    claim_id: str = Form(...),
+    claim_text: str = Form(...),
+    probe_question: str = Form(...),
+    answer: str = Form(...),
+    claim_type: str = Form(default="general")
+):
+    """
+    Submit candidate's response to a claim verification probe.
+    Evaluates response quality and updates verification status.
+    """
+    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    # Evaluate response quality
+    word_count = len(answer.split())
+    if word_count >= 50:
+        response_quality = "detailed"
+        verified = True
+    elif word_count >= 20:
+        response_quality = "adequate"
+        verified = True
+    elif word_count >= 5:
+        response_quality = "vague"
+        verified = False
+    else:
+        response_quality = "no_response"
+        verified = False
+    
+    # Update the claim in resume evidence
+    if candidate.resume_evidence and candidate.resume_evidence.suspicious_claims:
+        for claim in candidate.resume_evidence.suspicious_claims:
+            if claim.claim_id == claim_id:
+                claim.verified = verified
+                claim.response_quality = response_quality
+                break
+    
+    # Also record as text answer evidence for the decision engine
+    from models import TextAnswerEvidence
+    probe_evidence = TextAnswerEvidence(
+        question_id=f"claim_probe_{claim_id}",
+        question_text=probe_question,
+        answer_text=answer,
+        competency=f"Claim Verification: {claim_type.title()}",
+        word_count=word_count
+    )
+    
+    if candidate.text_answer_evidence is None:
+        candidate.text_answer_evidence = []
+    candidate.text_answer_evidence.append(probe_evidence)
+    
+    # Decision node for timeline
+    add_decision_node(
+        candidate_id=candidate_id,
+        node_type="TEXT",
+        title=f"Claim Probe: {claim_type.title()} Verification",
+        description=f"Verified claim '{claim_text[:50]}...' - Response: {response_quality}",
+        impact="positive" if verified else "negative",
+        evidence_id=f"claim_{claim_id}"
+    )
+    
+    return {
+        "success": True,
+        "verified": verified,
+        "response_quality": response_quality,
+        "message": f"Claim verification recorded: {response_quality}"
+    }
+
+
+@app.get("/api/assessment/authenticity-score/{candidate_id}")
+async def get_authenticity_score(candidate_id: str):
+    """
+    Calculate and return the resume authenticity score.
+    Based on how well the candidate verified their claims.
+    """
+    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    claims = []
+    if candidate.resume_evidence and candidate.resume_evidence.suspicious_claims:
+        claims = candidate.resume_evidence.suspicious_claims
+    
+    if not claims:
+        return {
+            "success": True,
+            "overall_score": 100,
+            "claims_detected": 0,
+            "claims_verified": 0,
+            "claims_failed": 0,
+            "red_flags": [],
+            "message": "No verifiable claims detected"
+        }
+    
+    # Calculate score
+    claims_verified = sum(1 for c in claims if c.verified is True)
+    claims_failed = sum(1 for c in claims if c.verified is False)
+    claims_pending = sum(1 for c in claims if c.verified is None)
+    
+    # Score calculation: verified claims boost, failed claims penalize
+    base_score = 70
+    verified_bonus = (claims_verified / len(claims)) * 30
+    failed_penalty = (claims_failed / len(claims)) * 40
+    
+    overall_score = max(0, min(100, int(base_score + verified_bonus - failed_penalty)))
+    
+    # Identify red flags
+    red_flags = []
+    for claim in claims:
+        if claim.verified is False and claim.confidence_flag == "high":
+            red_flags.append(f"Failed to verify: {claim.claim_text[:50]}")
+    
+    return {
+        "success": True,
+        "overall_score": overall_score,
+        "claims_detected": len(claims),
+        "claims_verified": claims_verified,
+        "claims_failed": claims_failed,
+        "claims_pending": claims_pending,
+        "red_flags": red_flags
+    }
+
+
 @app.post("/api/assessment/submit-mcq")
 async def submit_mcq(
     candidate_id: str = Form(...),

@@ -5,6 +5,7 @@ import { Header } from '../components/Header';
 import { DecisionCard, EvidencePanel } from '../components/DecisionCard';
 import { AuditTrail } from '../components/AuditTrail';
 import { DecisionTimeline } from '../components/DecisionTimeline';
+import { ResumeAuthenticityPanel } from '../components/ResumeAuthenticityPanel';
 import {
     Loader2, ArrowLeft, Download, Share2,
     User, Mail, Briefcase, Calendar,
@@ -439,8 +440,16 @@ export function RecruiterDashboard() {
                         )}
                     </div>
 
-                    {/* Right Column: Psychometrics & sidebar */}
+                    {/* Right Column: Authenticity, Psychometrics & sidebar */}
                     <div className="space-y-8">
+                        {/* Resume Authenticity Panel */}
+                        {candidate && (
+                            <ResumeAuthenticityPanel
+                                candidate={candidate}
+                                candidateId={candidateId}
+                            />
+                        )}
+
                         {/* Visual Evidence (Strategic Enhancement) */}
                         {snapshots.length > 0 && (
                             <div className="bg-surface-elevated rounded-xl border border-surface-overlay p-6 shadow-lg">

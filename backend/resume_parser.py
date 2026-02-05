@@ -5,8 +5,9 @@ Every decision is explainable with exact reasoning
 """
 
 import re
+import uuid
 from typing import List, Tuple, Optional, Dict
-from models import ResumeEvidence
+from models import ResumeEvidence, SuspiciousClaim
 
 import logging
 
@@ -97,6 +98,10 @@ class ResumeGatekeeper:
         experience_years = self._extract_experience_years(text)
         education = self._extract_education(text)
         
+        # Extract suspicious claims for verification
+        claim_extractor = ClaimExtractor()
+        suspicious_claims = claim_extractor.extract_claims(text)
+        
         # Generate human-readable reasoning
         reasoning = self._generate_reasoning(
             found_skills, missing_critical, match_score, experience_years
@@ -111,7 +116,8 @@ class ResumeGatekeeper:
             reasoning=reasoning,
             missing_critical=missing_critical,
             experience_years=experience_years,
-            education=education
+            education=education,
+            suspicious_claims=suspicious_claims
         )
     
     @staticmethod
@@ -298,6 +304,172 @@ class ResumeGatekeeper:
                 "No relevant skills detected for this specific profile."
             )
 
+
+class ClaimExtractor:
+    """
+    Extracts and flags suspicious claims from resumes for verification.
+    Part of the Claim Probing Engine - detects potential resume fraud.
+    """
+    
+    # Big companies that are commonly faked
+    NOTABLE_COMPANIES = [
+        "google", "meta", "facebook", "amazon", "apple", "microsoft", "netflix",
+        "uber", "airbnb", "stripe", "coinbase", "tesla", "nvidia", "openai",
+        "goldman sachs", "mckinsey", "bcg", "bain", "deloitte", "accenture",
+        "jpmorgan", "morgan stanley", "samsung", "ibm", "oracle", "salesforce",
+        "adobe", "linkedin", "twitter", "x corp", "paypal", "spotify"
+    ]
+    
+    # Patterns for suspicious claims
+    CLAIM_PATTERNS = {
+        "cgpa": [
+            (r'(?:cgpa|gpa|grade)[:\s]*(\d+\.?\d*)\s*/?\s*(?:10|4\.0|4)', "CGPA/GPA Score"),
+            (r'(\d+\.?\d*)\s*/\s*(?:10|4\.0|4)\s*(?:cgpa|gpa)', "CGPA/GPA Score"),
+            (r'(?:percentage|percent)[:\s]*(\d+\.?\d*)%?', "Academic Percentage"),
+        ],
+        "leadership": [
+            (r'(?:led|managed|headed|directed)\s+(?:a\s+)?team\s+of\s+(\d+)', "Team Leadership"),
+            (r'(\d+)\+?\s*(?:direct\s+)?reports', "Team Size"),
+            (r'(?:led|managed|oversaw)\s+(\d+)\+?\s*(?:engineers|developers|people)', "People Management"),
+        ],
+        "impact": [
+            (r'(?:increased|improved|boosted|grew)\s+.*?by\s+(\d+)%', "Impact Metric"),
+            (r'(?:reduced|decreased|cut)\s+.*?by\s+(\d+)%', "Cost/Time Reduction"),
+            (r'(?:saved|generated)\s+\$?([\d,]+(?:k|m|million|thousand)?)', "Financial Impact"),
+            (r'(\d+)x\s+(?:improvement|increase|growth)', "Multiplier Claim"),
+        ],
+        "experience": [
+            (r'(\d+)\+?\s*years?\s+(?:of\s+)?experience', "Years of Experience"),
+            (r'(?:senior|staff|principal|lead)\s+(?:software\s+)?(?:engineer|developer)', "Seniority Level"),
+        ],
+        "company": []  # Populated dynamically from NOTABLE_COMPANIES
+    }
+    
+    def __init__(self):
+        # Build company patterns
+        for company in self.NOTABLE_COMPANIES:
+            self.CLAIM_PATTERNS["company"].append(
+                (rf'\b{re.escape(company)}\b', f"Employment at {company.title()}")
+            )
+    
+    def extract_claims(self, text: str) -> List[SuspiciousClaim]:
+        """
+        Extract and flag suspicious claims from resume text.
+        Returns a list of SuspiciousClaim objects.
+        """
+        claims = []
+        text_lower = text.lower()
+        
+        for claim_type, patterns in self.CLAIM_PATTERNS.items():
+            for pattern, label in patterns:
+                matches = list(re.finditer(pattern, text_lower, re.IGNORECASE))
+                for match in matches:
+                    # Get context around the match
+                    start = max(0, match.start() - 50)
+                    end = min(len(text), match.end() + 50)
+                    context = text[start:end].replace("\n", " ").strip()
+                    
+                    # Determine suspicion level
+                    confidence = self._assess_suspicion(claim_type, match, text_lower)
+                    
+                    # Generate verification prompt
+                    verification_prompt = self._generate_verification_prompt(
+                        claim_type, label, match.group(0), context
+                    )
+                    
+                    claim = SuspiciousClaim(
+                        claim_id=str(uuid.uuid4())[:8],
+                        claim_text=match.group(0).strip(),
+                        claim_type=claim_type,
+                        confidence_flag=confidence,
+                        verification_prompt=verification_prompt,
+                        context=f"...{context}..."
+                    )
+                    claims.append(claim)
+        
+        # Deduplicate similar claims
+        return self._deduplicate_claims(claims)
+    
+    def _assess_suspicion(self, claim_type: str, match, text: str) -> str:
+        """
+        Assess how suspicious a claim is.
+        Returns: 'high', 'medium', or 'low'
+        """
+        try:
+            if claim_type == "cgpa":
+                # Extract the numeric value
+                value_str = match.group(1)
+                value = float(value_str)
+                if value >= 9.5 or value >= 3.9:  # Top-tier GPA
+                    return "high"
+                elif value >= 8.5 or value >= 3.5:
+                    return "medium"
+                return "low"
+            
+            elif claim_type == "leadership":
+                team_size = int(match.group(1))
+                if team_size >= 20:
+                    return "high"
+                elif team_size >= 10:
+                    return "medium"
+                return "low"
+            
+            elif claim_type == "impact":
+                # Check for unrealistic percentages or amounts
+                value_str = match.group(1).replace(",", "").lower()
+                if "m" in value_str or "million" in value_str:
+                    return "high"
+                try:
+                    value = float(value_str.replace("k", "000"))
+                    if value >= 100:  # 100% or $100k+
+                        return "high"
+                    elif value >= 50:
+                        return "medium"
+                except:
+                    pass
+                return "medium"
+            
+            elif claim_type == "company":
+                # FAANG companies are always high-value claims
+                return "high"
+            
+            elif claim_type == "experience":
+                years = int(match.group(1)) if match.group(1) else 0
+                if years >= 10:
+                    return "high"
+                elif years >= 5:
+                    return "medium"
+                return "low"
+        except (ValueError, IndexError):
+            pass
+        
+        return "medium"
+    
+    def _generate_verification_prompt(
+        self, claim_type: str, label: str, claim_text: str, context: str
+    ) -> str:
+        """
+        Generate a specific verification question for the claim.
+        """
+        prompts = {
+            "cgpa": f"You mentioned achieving {claim_text}. Can you describe a particularly challenging academic project or course that contributed to this grade?",
+            "leadership": f"You mentioned leading a team ({claim_text}). Describe a specific conflict or challenge you faced while managing this team and how you resolved it.",
+            "impact": f"The resume mentions: '{claim_text}'. Walk us through the exact methodology you used to measure this impact. What were the before/after metrics?",
+            "company": f"You've worked at a notable company. Describe the internal tools, team structure, or proprietary processes you encountered there that an outsider wouldn't know.",
+            "experience": f"With {claim_text}, what's the most significant evolution you've seen in your field, and how has your approach adapted?"
+        }
+        return prompts.get(claim_type, f"Tell us more about: {claim_text}")
+    
+    def _deduplicate_claims(self, claims: List[SuspiciousClaim]) -> List[SuspiciousClaim]:
+        """Remove duplicate or overlapping claims."""
+        seen = set()
+        unique = []
+        for claim in claims:
+            key = (claim.claim_type, claim.claim_text[:20])
+            if key not in seen:
+                seen.add(key)
+                unique.append(claim)
+        return unique
 
 # Demo function for testing
 def demo_parse():
