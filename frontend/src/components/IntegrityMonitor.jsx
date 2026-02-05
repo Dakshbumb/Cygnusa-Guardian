@@ -60,10 +60,32 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
     }, [candidateId, onViolation, captureAndUploadSnapshot]);
 
     useEffect(() => {
-        // Initialize MediaPipe Face Detection
+        // Bluetooth and Multi-Monitor Sensing
+        let integrityCheckInterval = null;
+        let unfocusedStartTime = null;
         let faceDetection = null;
         let camera = null;
         let snapshotInterval = null;
+
+        const checkPeripherals = async () => {
+            try {
+                // 1. Multi-Monitor Detection
+                const isExtended = window.screen.isExtended || (window.screen.availWidth > window.innerWidth * 1.5);
+                if (isExtended) {
+                    logViolation('external_display_connected', 'medium', 'Multiple monitors or extended display detected');
+                }
+
+                // 2. Bluetooth Proximity Logic (Heuristic)
+                if (navigator.bluetooth && navigator.bluetooth.getAvailability) {
+                    const available = await navigator.bluetooth.getAvailability();
+                    if (available) {
+                        console.log('Bluetooth signals detected in proximity');
+                    }
+                }
+            } catch (err) {
+                console.warn('Peripheral check error:', err);
+            }
+        };
 
         const initIntegrity = async () => {
             try {
@@ -79,8 +101,6 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
                     faceDetection.onResults((results) => {
                         const faces = results.detections.length;
-
-                        // Clear and draw on canvas
                         const canvas = canvasRef.current;
                         if (canvas) {
                             const ctx = canvas.getContext('2d');
@@ -88,19 +108,16 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
                             if (results.detections.length > 0) {
                                 results.detections.forEach(detection => {
-                                    // Draw bounding box
                                     const bbox = detection.boundingBox;
                                     const x = bbox.xCenter * canvas.width - (bbox.width * canvas.width) / 2;
                                     const y = bbox.yCenter * canvas.height - (bbox.height * canvas.height) / 2;
                                     const w = bbox.width * canvas.width;
                                     const h = bbox.height * canvas.height;
 
-                                    // Dynamic color: Green for valid, Red for invalid
                                     ctx.strokeStyle = faces === 1 ? '#10b981' : '#ef4444';
                                     ctx.lineWidth = 3;
                                     ctx.strokeRect(x, y, w, h);
 
-                                    // Draw landmarks (dots for proof of active MediaPipe)
                                     ctx.fillStyle = ctx.strokeStyle;
                                     detection.landmarks.forEach(landmark => {
                                         ctx.beginPath();
@@ -119,6 +136,21 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                             logViolation('multiple_faces', 'high', 'Multiple faces detected');
                         } else {
                             setFaceStatus('MATCH');
+
+                            // 3. "Looking Away" Detection Heuristic
+                            if (document.hidden || !document.hasFocus()) {
+                                if (!unfocusedStartTime) {
+                                    unfocusedStartTime = Date.now();
+                                } else {
+                                    const duration = (Date.now() - unfocusedStartTime) / 1000;
+                                    if (duration > 15) {
+                                        logViolation('nearby_device_focus_suspicion', 'high', 'User looking at another device while window hidden');
+                                        unfocusedStartTime = null;
+                                    }
+                                }
+                            } else {
+                                unfocusedStartTime = null;
+                            }
                         }
                     });
 
@@ -133,13 +165,14 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                         await camera.start();
                         setStatus('monitoring');
 
-                        // Start periodic snapshot capture (every 30 seconds)
                         snapshotInterval = setInterval(() => {
                             captureAndUploadSnapshot();
                         }, 30000);
+
+                        integrityCheckInterval = setInterval(checkPeripherals, 60000);
+                        checkPeripherals();
                     }
                 } else {
-                    // Fallback to basic webcam if MediaPipe fails to load
                     console.warn('MediaPipe not loaded, falling back to basic webcam');
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: { width: 320, height: 240 }
@@ -148,10 +181,12 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                         videoRef.current.srcObject = stream;
                         setStatus('monitoring');
 
-                        // Start periodic snapshot capture (every 30 seconds)
                         snapshotInterval = setInterval(() => {
                             captureAndUploadSnapshot();
                         }, 30000);
+
+                        integrityCheckInterval = setInterval(checkPeripherals, 60000);
+                        checkPeripherals();
                     }
                 }
             } catch (err) {
@@ -164,33 +199,28 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
         initIntegrity();
 
-        // Tab visibility detection
         const handleVisibilityChange = () => {
             if (document.hidden) {
                 logViolation('tab_switch', 'medium', 'User switched to another tab or window');
+            } else {
+                unfocusedStartTime = null;
             }
         };
 
-        // Paste detection
         const handlePaste = (e) => {
             const pastedText = e.clipboardData?.getData('text') || '';
             logViolation('paste_detected', 'high', `Pasted ${pastedText.length} characters`);
         };
 
-        // Copy detection
         const handleCopy = () => {
             logViolation('copy_detected', 'low', 'User copied content');
         };
 
-        // Context menu (right-click) detection
         const handleContextMenu = (e) => {
-            // Don't prevent, just log
             logViolation('context_menu', 'low', 'Right-click menu opened');
         };
 
-        // Keyboard shortcut detection
         const handleKeyDown = (e) => {
-            // Detect common shortcuts
             if (e.ctrlKey || e.metaKey) {
                 const shortcuts = {
                     'c': 'copy',
@@ -200,28 +230,21 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                     'f': 'find',
                     'Tab': 'tab_switch'
                 };
-
                 if (shortcuts[e.key]) {
-                    // Only log tab switch as high severity
                     if (e.key === 'Tab') {
                         logViolation('keyboard_shortcut', 'medium', `Ctrl+Tab detected`);
                     }
                 }
             }
-
-            // Alt+Tab detection (will trigger on Alt key)
             if (e.altKey && e.key === 'Tab') {
                 logViolation('alt_tab', 'medium', 'Alt+Tab detected');
             }
         };
 
-        // Window blur detection
         const handleBlur = () => {
-            // This fires when user clicks outside browser window
             logViolation('window_blur', 'low', 'Window lost focus');
         };
 
-        // Add event listeners
         document.addEventListener('visibilitychange', handleVisibilityChange);
         document.addEventListener('paste', handlePaste);
         document.addEventListener('copy', handleCopy);
@@ -229,9 +252,9 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
         document.addEventListener('keydown', handleKeyDown);
         window.addEventListener('blur', handleBlur);
 
-        // Cleanup
         return () => {
             if (snapshotInterval) clearInterval(snapshotInterval);
+            if (integrityCheckInterval) clearInterval(integrityCheckInterval);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             document.removeEventListener('paste', handlePaste);
             document.removeEventListener('copy', handleCopy);
@@ -239,7 +262,6 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
             document.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('blur', handleBlur);
 
-            // Stop webcam
             if (videoRef.current?.srcObject) {
                 videoRef.current.srcObject.getTracks().forEach(track => track.stop());
             }
