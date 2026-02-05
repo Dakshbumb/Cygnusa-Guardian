@@ -1515,19 +1515,13 @@ async def generate_report(candidate_id: str):
         
         # Absolute fallback to allow submission
         from models import FinalDecision
-        decision = decision_engine._generate_fallback_decision({
+        fallback_data = decision_engine._generate_fallback_decision({
             'resume': candidate.resume_evidence.model_dump() if candidate.resume_evidence else {},
             'coding': {'avg_pass_rate': 0},
             'integrity': {'total_violations': 0}
         })
-        # Convert dict to model if needed
-        if isinstance(decision, dict):
-            decision = FinalDecision(
-                candidate_id=candidate_id,
-                evidence_summary={},
-                audit_trail={'model_used': 'emergency_fallback'},
-                **decision
-            )
+        # FinalDecision initialization will now succeed as we've hardened the fallback data in decision_engine.py
+        decision = FinalDecision(**fallback_data)
     
     # Update candidate
     candidate.integrity_evidence = integrity_evidence

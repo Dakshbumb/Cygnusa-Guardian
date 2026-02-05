@@ -585,6 +585,9 @@ Respond with ONLY the JSON, no additional text."""
                 ],
                 'role_fit': 'Unable to determine',
                 'next_steps': 'Manual review by hiring manager',
+                'evidence_summary': {},
+                'audit_trail': {'error': str(e)[:200], 'model': 'error_fallback'},
+                'transparency_token': f"forensic_err_{os.urandom(4).hex()}",
                 'cognitive_profile': {
                     'primary_style': 'Pragmatic_Generalist',
                     'cognitive_scores': {'abstraction': 5.0, 'execution_speed': 5.0, 'precision': 5.0, 'creativity': 5.0},
@@ -638,6 +641,9 @@ Respond with ONLY the JSON, no additional text."""
             'reasoning': reasoning,
             'role_fit': role_fit,
             'next_steps': next_steps,
+            'evidence_summary': evidence,
+            'audit_trail': {'model_used': 'deterministic_fallback', 'timestamp': datetime.now().isoformat()},
+            'transparency_token': f"forensic_fb_{os.urandom(4).hex()}",
             'cognitive_profile': {
                 'primary_style': 'Pragmatic_Generalist',
                 'cognitive_scores': {'abstraction': 5.0, 'execution_speed': 5.0, 'precision': 5.0, 'creativity': 5.0},
