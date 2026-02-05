@@ -141,9 +141,25 @@ class Database:
         try:
             db_candidate = session.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
             if db_candidate:
-                return CandidateProfile.model_validate(db_candidate.data)
+                try:
+                    return CandidateProfile.model_validate(db_candidate.data)
+                except Exception as ve:
+                    # Forensic Recovery: If strict validation fails due to legacy schema mismatches,
+                    # try to return a basic profile to avoid a 500 error.
+                    import logging
+                    logging.getLogger("cygnusa-db").warning(f"Validation failed for {candidate_id}, using loose recovery: {ve}")
+                    # Basic reconstruction
+                    data = db_candidate.data or {}
+                    return CandidateProfile(
+                        id=data.get('id', candidate_id),
+                        name=data.get('name', 'Unknown'),
+                        email=data.get('email', 'unknown@example.com'),
+                        status=data.get('status', 'pending'),
+                        job_title=data.get('job_title', 'Software Engineer')
+                    )
             return None
         finally:
+            session.close() # Use close instead of remove for direct session management
             self.Session.remove()
     
     def get_all_candidates(self, status: Optional[str] = None) -> List[CandidateProfile]:

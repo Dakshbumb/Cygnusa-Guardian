@@ -112,7 +112,7 @@ class MCQEvidence(BaseModel):
     """MCQ assessment evidence - tracks competency mapping"""
     question_id: str
     question_text: str
-    competency: str
+    competency: Optional[str] = "General"
     selected_option: str
     correct_option: str
     is_correct: bool
@@ -127,7 +127,7 @@ class TextAnswerEvidence(BaseModel):
     """Text/reasoning answer evidence - evaluates written responses"""
     question_id: str
     question_text: str
-    competency: str
+    competency: Optional[str] = "General"
     answer_text: str
     word_count: int
     time_taken_seconds: Optional[float] = None
@@ -145,12 +145,12 @@ class CognitiveStyle(str, Enum):
 
 class CognitiveProfile(BaseModel):
     """Strategic Cognitive Architecture Profiling - USP Implementation"""
-    primary_style: CognitiveStyle
-    secondary_style: Optional[CognitiveStyle] = None
-    cognitive_scores: Dict[str, float] # abstraction, execution_speed, precision, creativity
-    team_gap_fit: str # How this candidate fills specific enterprise team gaps
-    archetype_description: str
-    transparency_logic: str # Explanation of how this profile was derived
+    primary_style: str = "Pragmatic_Generalist"
+    secondary_style: Optional[str] = None
+    cognitive_scores: Dict[str, float] = Field(default_factory=lambda: {"abstraction": 5.0, "execution_speed": 5.0, "precision": 5.0, "creativity": 5.0})
+    team_gap_fit: Optional[str] = "General fit"
+    archetype_description: Optional[str] = "Balanced profile"
+    transparency_logic: Optional[str] = "Default logic"
 
 class PsychometricEvidence(BaseModel):
     """Enhanced Psychometric evidence including Cognitive Profiling"""
@@ -171,10 +171,10 @@ class IntegrityEvent(BaseModel):
 
 class IntegrityEvidence(BaseModel):
     """Proctoring evidence summary"""
-    total_violations: int
-    events: List[IntegrityEvent]
-    severity_score: float
-    trustworthiness_rating: str  # High, Medium, Low
+    total_violations: int = 0
+    events: List[IntegrityEvent] = []
+    severity_score: float = 0.0
+    trustworthiness_rating: str = "High" # High, Medium, Low
 
 
 class VideoSnapshot(BaseModel):
@@ -196,19 +196,19 @@ class VideoEvidence(BaseModel):
 class FinalDecision(BaseModel):
     """Final hiring decision with FULL transparency"""
     candidate_id: str
-    outcome: str  # HIRE, NO_HIRE, CONDITIONAL
-    confidence: str  # high, medium, low
+    outcome: str = "PENDING"  # HIRE, NO_HIRE, CONDITIONAL
+    confidence: str = "low"  # high, medium, low
     conflict_analysis: Optional[str] = None
-    conflict_score: Optional[int] = None
-    reasoning: List[str] = Field(min_length=1, max_length=10)
-    role_fit: str
-    next_steps: str
-    evidence_summary: Dict
-    evidentiary_mapping: Optional[Dict[str, str]] = None # section -> impact (e.g., "coding": "primary_driver")
-    forensic_trace: Optional[List[str]] = None # Multi-step derivation of the final verdict
-    cognitive_profile: Optional[CognitiveProfile] = None # Strategic mapping USP
-    audit_trail: Dict  # Contains the exact AI prompt + raw response
-    transparency_token: str # Unique forensic signature
+    conflict_score: Optional[int] = 0
+    reasoning: List[str] = Field(default_factory=lambda: ["Pending review"])
+    role_fit: str = "Under review"
+    next_steps: str = "Manual review required"
+    evidence_summary: Dict = Field(default_factory=dict)
+    evidentiary_mapping: Optional[Dict[str, str]] = None 
+    forensic_trace: Optional[List[str]] = None 
+    cognitive_profile: Optional[CognitiveProfile] = None 
+    audit_trail: Dict = Field(default_factory=dict) 
+    transparency_token: str = "trace_pending"
     generated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 

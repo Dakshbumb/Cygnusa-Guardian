@@ -534,23 +534,15 @@ Respond with ONLY the JSON, no additional text."""
             # Normalize Cognitive Profile keys and enum values (resilience layer)
             if 'cognitive_profile' in data and isinstance(data['cognitive_profile'], dict):
                 cp = data['cognitive_profile']
-                style_map = {
-                    "architectural": "Architectural_Thinker",
-                    "architectural_thinker": "Architectural_Thinker",
-                    "tactical": "Tactical_Executor",
-                    "tactical_executor": "Tactical_Executor",
-                    "innovator": "Creative_Innovator",
-                    "creative_innovator": "Creative_Innovator",
-                    "analyst": "Deep_Analyst",
-                    "deep_analyst": "Deep_Analyst",
-                    "generalist": "Pragmatic_Generalist",
-                    "pragmatic_generalist": "Pragmatic_Generalist"
-                }
-                
                 def normalize_style(style_str):
                     if not style_str: return "Pragmatic_Generalist"
-                    s = style_str.lower().strip().replace(" ", "_")
-                    return style_map.get(s, "Pragmatic_Generalist")
+                    s = str(style_str).lower().strip().replace(" ", "_")
+                    # Map common variations to our preferred names
+                    if "architect" in s: return "Architectural_Thinker"
+                    if "tactical" in s or "executor" in s: return "Tactical_Executor"
+                    if "innovat" in s or "creativ" in s: return "Creative_Innovator"
+                    if "analyst" in s or "deep" in s: return "Deep_Analyst"
+                    return "Pragmatic_Generalist"
 
                 cp['primary_style'] = normalize_style(cp.get('primary_style'))
                 if cp.get('secondary_style'):
@@ -559,14 +551,24 @@ Respond with ONLY the JSON, no additional text."""
                 # Ensure scores are floats and exist
                 scores = cp.get('cognitive_scores', {})
                 if not isinstance(scores, dict): scores = {}
-                cp['cognitive_scores'] = {
-                    k: float(v) for k, v in scores.items() if isinstance(v, (int, float))
+                # Handle cases where score keys might be different or abbreviated
+                norm_scores = {}
+                score_map = {
+                    "abstraction": ["abstraction", "abstract"],
+                    "execution_speed": ["execution_speed", "execution", "speed"],
+                    "precision": ["precision", "precise", "accuracy"],
+                    "creativity": ["creativity", "creative", "innovation"]
                 }
-                # Default scores if missing
-                for trait in ['abstraction', 'execution_speed', 'precision', 'creativity']:
-                    if trait not in cp['cognitive_scores']:
-                        cp['cognitive_scores'][trait] = 5.0
                 
+                for target, aliases in score_map.items():
+                    val = 5.0 # Default
+                    for alias in aliases:
+                        if alias in scores:
+                            try: val = float(scores[alias]); break
+                            except: continue
+                    norm_scores[target] = val
+                
+                cp['cognitive_scores'] = norm_scores
                 data['cognitive_profile'] = cp
 
             return data
