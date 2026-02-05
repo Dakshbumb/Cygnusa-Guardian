@@ -89,6 +89,17 @@ class Database:
             logging.getLogger("cygnusa-db").error(f"Database connection check failed: {e}")
             return False
     
+    @staticmethod
+    def _deep_sanitize_nulls(obj):
+        """Recursively strip null characters from any string in a dict/list structure"""
+        if isinstance(obj, str):
+            return obj.replace('\x00', '').replace('\u0000', '')
+        if isinstance(obj, dict):
+            return {k: Database._deep_sanitize_nulls(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [Database._deep_sanitize_nulls(i) for i in obj]
+        return obj
+
     # ==================== Candidate Operations ====================
     
     def save_candidate(self, candidate: CandidateProfile) -> None:
@@ -96,13 +107,14 @@ class Database:
         session = self.Session()
         try:
             db_candidate = session.query(CandidateModel).filter(CandidateModel.id == candidate.id).first()
+            sanitized_data = self._deep_sanitize_nulls(candidate.model_dump())
             
             if db_candidate:
                 db_candidate.name = candidate.name
                 db_candidate.email = candidate.email
                 db_candidate.job_title = candidate.job_title
                 db_candidate.status = candidate.status
-                db_candidate.data = candidate.model_dump()
+                db_candidate.data = sanitized_data
                 db_candidate.updated_at = datetime.utcnow()
             else:
                 db_candidate = CandidateModel(
@@ -111,7 +123,7 @@ class Database:
                     email=candidate.email,
                     job_title=candidate.job_title,
                     status=candidate.status,
-                    data=candidate.model_dump(),
+                    data=sanitized_data,
                     created_at=datetime.fromisoformat(candidate.created_at) if hasattr(candidate, 'created_at') and candidate.created_at else datetime.utcnow()
                 )
                 session.add(db_candidate)

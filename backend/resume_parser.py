@@ -142,11 +142,27 @@ class ResumeGatekeeper:
                 return text.lower().replace("\x00", "")
             except Exception as e:
                 logger.error(f"PDF parsing error for {pdf_path}: {e}")
-                return ""
-        else:
+                # Fallback to general file reader
+        
+        # Check for docx
+        if pdf_path.endswith(".docx"):
             try:
-                with open(pdf_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    return f.read().lower()
+                import docx
+                doc = docx.Document(pdf_path)
+                text = "\n".join([p.text for p in doc.paragraphs])
+                return text.lower().replace("\x00", "")
+            except Exception as e:
+                logger.error(f"DOCX parsing error: {e}")
+
+        # Final fallback Case
+        try:
+            with open(pdf_path, 'r', encoding='utf-8', errors='ignore') as f:
+                return f.read().lower().replace("\x00", "")
+        except Exception:
+            try:
+                # Binary read fallback for unknown types
+                with open(pdf_path, 'rb') as f:
+                    return f.read().decode('utf-8', errors='ignore').lower().replace("\x00", "")
             except Exception:
                 return ""
 

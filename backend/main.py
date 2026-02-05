@@ -583,7 +583,7 @@ async def upload_resume(
     
     # Step 3: Extract text ONCE
     logger.info(f"Extracting text from {file_path}")
-    extracted_text = ResumeGatekeeper.extract_text(file_path)
+    extracted_text = ResumeGatekeeper.extract_text(file_path).replace("\x00", "").replace("\u0000", "")
     logger.info(f"Extracted {len(extracted_text)} characters")
     
     # Step 4: Parse resume with provided skills (primary analysis)
