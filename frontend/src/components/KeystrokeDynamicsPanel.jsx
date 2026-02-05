@@ -15,7 +15,7 @@ export function KeystrokeDynamicsPanel({ candidate }) {
                         Biometric_DNA_Pending
                     </h3>
                 </div>
-                <p className="text-neutral-500 text-xs font-mono">Establishment phase active. Waiting for 200 keystroke baseline.</p>
+                <p className="text-neutral-500 text-xs font-mono">Establishment phase active. Waiting for 50 keystroke baseline.</p>
             </div>
         );
     }

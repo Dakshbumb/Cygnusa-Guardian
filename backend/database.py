@@ -158,6 +158,38 @@ class Database:
             return [CandidateProfile.model_validate(row.data) for row in rows]
         finally:
             self.Session.remove()
+
+    def get_candidates_summary(self, status: Optional[str] = None) -> List[dict]:
+        """Fetch only essential candidate columns for list views (Dashboard)"""
+        session = self.Session()
+        try:
+            query = session.query(
+                CandidateModel.id,
+                CandidateModel.name,
+                CandidateModel.email,
+                CandidateModel.job_title,
+                CandidateModel.status,
+                CandidateModel.created_at
+            )
+            
+            if status:
+                query = query.filter(CandidateModel.status == status)
+            
+            rows = query.order_by(CandidateModel.created_at.desc()).all()
+            
+            return [
+                {
+                    "id": row.id,
+                    "name": row.name,
+                    "email": row.email,
+                    "job_title": row.job_title,
+                    "status": row.status,
+                    "created_at": row.created_at.isoformat() if hasattr(row.created_at, 'isoformat') else str(row.created_at)
+                }
+                for row in rows
+            ]
+        finally:
+            self.Session.remove()
     
     def delete_candidate(self, candidate_id: str) -> bool:
         """Delete candidate and associated logs"""

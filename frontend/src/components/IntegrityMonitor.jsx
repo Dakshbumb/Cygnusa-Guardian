@@ -11,42 +11,67 @@ import { motion, AnimatePresence } from 'framer-motion';
 export function IntegrityMonitor({ candidateId, onViolation }) {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const offScreenCanvasRef = useRef(null);
     const [violations, setViolations] = useState([]);
     const [status, setStatus] = useState('initializing');
     const [isMinimized, setIsMinimized] = useState(false);
     const [webcamError, setWebcamError] = useState(null);
     const [faceStatus, setFaceStatus] = useState('SCANNING'); // MATCH, NO_FACE, MULTIPLE
+    const faceStatusRef = useRef('SCANNING');
     const [isLocked, setIsLocked] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(true);
     const [lockdownReason, setLockdownReason] = useState('');
 
+    // Stability refs to prevent useEffect restarts
+    const logViolationRef = useRef(null);
+    const captureSnapshotRef = useRef(null);
+    const onViolationRef = useRef(onViolation);
+
+    // Sync refs with latest props/functions
+    useEffect(() => {
+        onViolationRef.current = onViolation;
+    }, [onViolation]);
+
     // Log violation to backend and update local state
     const captureAndUploadSnapshot = useCallback(async (faceDetected = null) => {
-        if (!videoRef.current || !canvasRef.current) return;
-
         const video = videoRef.current;
-        const canvas = canvasRef.current;
+        if (!video || video.readyState < 2) return;
+
+        if (!offScreenCanvasRef.current) {
+            offScreenCanvasRef.current = document.createElement('canvas');
+            offScreenCanvasRef.current.width = 640;
+            offScreenCanvasRef.current.height = 480;
+        }
+
+        const canvas = offScreenCanvasRef.current;
         const context = canvas.getContext('2d');
 
-        // Draw current video frame to canvas
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // Convert to blob
-        canvas.toBlob(async (blob) => {
-            if (!blob) return;
-            try {
-                await api.uploadSnapshot(candidateId, blob, faceDetected);
-                console.log('Proctoring snapshot uploaded');
-            } catch (error) {
-                console.error('Failed to upload snapshot:', error);
-            }
-        }, 'image/jpeg', 0.7);
+        try {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(async (blob) => {
+                if (!blob) return;
+                try {
+                    // Use faceDetected if passed, otherwise use current ref value
+                    const detected = faceDetected !== null ? faceDetected : (faceStatusRef.current === 'MATCH');
+                    await api.uploadSnapshot(candidateId, blob, detected);
+                    console.log('Proctoring snapshot uploaded, face:', detected);
+                } catch (error) {
+                    console.error('Failed to upload snapshot:', error);
+                }
+            }, 'image/jpeg', 0.6);
+        } catch (err) {
+            console.error('Capture error:', err);
+        }
     }, [candidateId]);
 
-    const logViolation = useCallback(async (eventType, severity, context = null) => {
-        if (isLocked) return; // Don't log more if already in lockdown
+    // Update the ref whenever the function changes
+    useEffect(() => {
+        captureSnapshotRef.current = captureAndUploadSnapshot;
+    }, [captureAndUploadSnapshot]);
 
-        // Throttle mobile proximity logs to avoid spamming
+    const logViolation = useCallback(async (eventType, severity, context = null) => {
+        if (isLocked) return;
+
         if (eventType === 'mobile_proximity_potential') {
             const lastLog = violations.filter(v => v.eventType === 'mobile_proximity_potential').pop();
             if (lastLog && (new Date() - new Date(lastLog.timestamp)) < 120000) return;
@@ -58,7 +83,6 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
             setViolations(prev => {
                 const updated = [...prev, newViolation];
-                // Step 3: UI Lockdown Mode (Auto-suspend on 100+ violations)
                 if (updated.length >= 100) {
                     setIsLocked(true);
                     setLockdownReason('INTEGRITY_THRESHOLD_EXCEEDED');
@@ -66,18 +90,22 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                 return updated;
             });
 
-            // Capture snapshot immediately on high-severity violations
             if (severity === 'high' || severity === 'critical') {
-                captureAndUploadSnapshot(eventType.includes('face'));
+                captureSnapshotRef.current?.(eventType.includes('face'));
             }
 
-            if (onViolation) {
-                onViolation(newViolation);
+            if (onViolationRef.current) {
+                onViolationRef.current(newViolation);
             }
         } catch (error) {
             console.error('Failed to log integrity event:', error);
         }
-    }, [candidateId, onViolation, captureAndUploadSnapshot, isLocked]);
+    }, [candidateId, isLocked, violations]); // Keep violations to ensure filtering works correctly
+
+    // Update the ref
+    useEffect(() => {
+        logViolationRef.current = logViolation;
+    }, [logViolation]);
 
     useEffect(() => {
         // Bluetooth and Multi-Monitor Sensing
@@ -189,12 +217,18 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
                         if (faces === 0) {
                             setFaceStatus('NO_FACE');
-                            if (Math.random() < 0.05) logViolation('no_face_detected', 'medium', 'User face not visible');
+                            faceStatusRef.current = 'NO_FACE';
+                            if (Math.random() < 0.05) logViolationRef.current?.('no_face_detected', 'medium', 'User face not visible');
                         } else if (faces > 1) {
                             setFaceStatus('MULTIPLE');
-                            logViolation('multiple_faces', 'high', 'Multiple faces detected');
+                            faceStatusRef.current = 'MULTIPLE';
+                            logViolationRef.current?.('multiple_faces', 'high', 'Multiple faces detected');
                         } else {
-                            setFaceStatus('MATCH');
+                            if (faceStatusRef.current !== 'MATCH') {
+                                console.log('Face Detected and Matched');
+                                setFaceStatus('MATCH');
+                                faceStatusRef.current = 'MATCH';
+                            }
 
                             // 3. "Looking Away" Detection Heuristic
                             if (document.hidden || !document.hasFocus()) {
@@ -203,7 +237,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                                 } else {
                                     const duration = (Date.now() - unfocusedStartTime) / 1000;
                                     if (duration > 15) {
-                                        logViolation('nearby_device_focus_suspicion', 'high', 'User looking at another device while window hidden');
+                                        logViolationRef.current?.('nearby_device_focus_suspicion', 'high', 'User looking at another device while window hidden');
                                         unfocusedStartTime = null;
                                     }
                                 }
@@ -225,8 +259,9 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                         setStatus('monitoring');
 
                         snapshotInterval = setInterval(() => {
-                            captureAndUploadSnapshot();
-                        }, 30000);
+                            // Use the ref to get current status without stale closure
+                            captureSnapshotRef.current?.(faceStatusRef.current === 'MATCH');
+                        }, 45000);
 
                         integrityCheckInterval = setInterval(checkPeripherals, 60000);
                         checkPeripherals();
@@ -241,7 +276,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                         setStatus('monitoring');
 
                         snapshotInterval = setInterval(() => {
-                            captureAndUploadSnapshot();
+                            captureSnapshotRef.current?.();
                         }, 30000);
 
                         integrityCheckInterval = setInterval(checkPeripherals, 60000);
@@ -265,7 +300,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                logViolation('tab_switch', 'medium', 'User switched to another tab or window');
+                logViolationRef.current?.('tab_switch', 'medium', 'User switched to another tab or window');
             } else {
                 unfocusedStartTime = null;
             }
@@ -273,17 +308,17 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
         const handlePaste = (e) => {
             e.preventDefault();
-            logViolation('paste_attempt', 'high', 'Paste blocked by environment security');
+            logViolationRef.current?.('paste_attempt', 'high', 'Paste blocked by environment security');
         };
 
         const handleCopy = (e) => {
             e.preventDefault();
-            logViolation('copy_attempt', 'low', 'Copy blocked by environment security');
+            logViolationRef.current?.('copy_attempt', 'low', 'Copy blocked by environment security');
         };
 
         const handleContextMenu = (e) => {
             e.preventDefault();
-            logViolation('context_menu', 'low', 'Right-click menu blocked');
+            logViolationRef.current?.('context_menu', 'low', 'Right-click menu blocked');
         };
 
         const handleKeyDown = (e) => {
@@ -298,7 +333,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                 };
                 if (shortcuts[e.key]) {
                     if (e.key === 'Tab') {
-                        logViolation('keyboard_shortcut', 'medium', `Ctrl+Tab detected`);
+                        logViolationRef.current?.('keyboard_shortcut', 'medium', `Ctrl+Tab detected`);
                     } else if (e.key === 'v' || e.key === 'c') {
                         // Prevent default for copy/paste shortcuts
                         e.preventDefault();
@@ -306,20 +341,20 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                 }
             }
             if (e.altKey && e.key === 'Tab') {
-                logViolation('alt_tab', 'medium', 'Alt+Tab detected');
+                logViolationRef.current?.('alt_tab', 'medium', 'Alt+Tab detected');
             }
         };
 
         const handleBlur = () => {
             // Side-Assistant Detection: If focus is lost, suggest interaction outside
-            logViolation('environment_focus_lost', 'medium', 'Interaction with browser sidebar or external app suspected');
+            logViolationRef.current?.('environment_focus_lost', 'medium', 'Interaction with browser sidebar or external app suspected');
         };
 
         // Step 2: Fullscreen Protocol
         const enforceFullscreen = () => {
             if (!document.fullscreenElement) {
                 setIsFullscreen(false);
-                logViolation('security_protocol_exit', 'high', 'User exited fullscreen mode');
+                logViolationRef.current?.('security_protocol_exit', 'high', 'User exited fullscreen mode');
             } else {
                 setIsFullscreen(true);
             }
@@ -363,7 +398,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                 videoRef.current.srcObject.getTracks().forEach(track => track.stop());
             }
         };
-    }, [candidateId, logViolation, captureAndUploadSnapshot]);
+    }, [candidateId]); // STABLE: Only depends on candidateId
 
     // Severity color mapping
     const getSeverityColor = (severity) => {
