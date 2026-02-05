@@ -821,6 +821,11 @@ async def submit_code(
     evidence.time_submitted = time_submitted
     evidence.duration_seconds = duration_seconds
     
+    # FIX: Append code evidence to candidate's code_evidence list
+    if candidate.code_evidence is None:
+        candidate.code_evidence = []
+    candidate.code_evidence.append(evidence)
+    
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
     
@@ -1609,13 +1614,25 @@ async def export_report_pdf(candidate_id: str):
     integrity_chart_labels = list(violation_counts.keys())
     integrity_chart_data = list(violation_counts.values())
 
+
     # Cognitive Profile (Radar Chart)
     cognitive_labels = []
     cognitive_values = []
     if cognitive and "cognitive_scores" in cognitive:
-        for trait, score in cognitive["cognitive_scores"].items():
-            cognitive_labels.append(trait.title())
-            cognitive_values.append(score)
+        try:
+            for trait, score in cognitive["cognitive_scores"].items():
+                # FIX: Ensure trait is a string and score is a float (AI may return dicts)
+                trait_str = str(trait) if not isinstance(trait, dict) else "unknown"
+                if isinstance(score, dict):
+                    score_val = float(score.get('score', score.get('value', 5.0)))
+                else:
+                    score_val = float(score) if score is not None else 0.0
+                cognitive_labels.append(trait_str.title())
+                cognitive_values.append(score_val)
+        except Exception as cog_err:
+            logger.warning(f"Cognitive score parsing failed: {cog_err}, using defaults")
+            cognitive_labels = ["Abstraction", "Speed", "Precision", "Creativity"]
+            cognitive_values = [5, 5, 5, 5]
     else:
         # Fallback for old records
         cognitive_labels = ["Abstraction", "Speed", "Precision", "Creativity"]
@@ -1627,13 +1644,20 @@ async def export_report_pdf(candidate_id: str):
     mapping_values = []
     impact_weight = {"primary_driver": 100, "supporting": 60, "negative": 30, "neutral": 10, "none": 0}
     
-    for section, impact in mapping.items():
-        mapping_labels.append(section.title())
-        # Defensive: If impact is a dict (e.g. from AI), extract value or use neutral
-        safe_impact = impact
-        if isinstance(impact, dict):
-            safe_impact = impact.get('impact', 'neutral')
-        mapping_values.append(impact_weight.get(str(safe_impact).lower(), 10))
+    try:
+        for section, impact in mapping.items():
+            # FIX: Ensure section is a string (never use dict as key)
+            section_str = str(section) if not isinstance(section, dict) else "unknown_section"
+            mapping_labels.append(section_str.title())
+            # Defensive: If impact is a dict (e.g. from AI), extract value or use neutral
+            safe_impact = impact
+            if isinstance(impact, dict):
+                safe_impact = impact.get('impact', impact.get('value', 'neutral'))
+            mapping_values.append(impact_weight.get(str(safe_impact).lower(), 10))
+    except Exception as map_err:
+        logger.warning(f"Evidentiary mapping parsing failed: {map_err}, using empty")
+        mapping_labels = []
+        mapping_values = []
 
     # Format dates
     completion_date = candidate.completed_at or candidate.created_at
