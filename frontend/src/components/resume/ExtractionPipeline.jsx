@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Scan, Database, Brain, CheckCircle2, XCircle } from 'lucide-react';
 import { api } from '../../utils/api';
 
-export function ExtractionPipeline({ file, onComplete, onError }) {
+export function ExtractionPipeline({ file, selectedRole, onComplete, onError }) {
     const [step, setStep] = useState(0);
     const [logs, setLogs] = useState([]);
     const [failed, setFailed] = useState(false);
@@ -34,7 +34,15 @@ export function ExtractionPipeline({ file, onComplete, onError }) {
             // On step 2 (TEXT_EXTRACTION), make the real API call
             if (currentStep === 1 && file) {
                 try {
-                    const response = await api.analyzeResume(file);
+                    const jdSkills = selectedRole?.required_skills?.join(',') || 'python,javascript,react';
+                    const criticalSkills = selectedRole?.critical_skills?.join(',') || '';
+                    const response = await api.analyzeResume(
+                        file,
+                        jdSkills,
+                        'Candidate',
+                        'candidate@example.com',
+                        selectedRole?.title || 'Software Engineer'
+                    );
                     analysisResult = response.data;
                     setLogs(prev => [...prev.slice(-4), `[${new Date().toLocaleTimeString()}] ANALYSIS COMPLETE: Candidate ${analysisResult.candidate_id}`]);
                 } catch (err) {
@@ -82,16 +90,16 @@ export function ExtractionPipeline({ file, onComplete, onError }) {
                     return (
                         <div key={i} className="flex flex-col items-center gap-3">
                             <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${failed && i === step ? 'border-error-500 bg-surface-base text-error-400' :
-                                    isActive ? 'border-primary-500 bg-surface-base text-primary-400 scale-110 shadow-[0_0_20px_rgba(99,102,241,0.3)]' :
-                                        isCompleted ? 'border-success-500 bg-surface-base text-success-400' :
-                                            'border-neutral-700 bg-surface-elevated text-neutral-600'
+                                isActive ? 'border-primary-500 bg-surface-base text-primary-400 scale-110 shadow-[0_0_20px_rgba(99,102,241,0.3)]' :
+                                    isCompleted ? 'border-success-500 bg-surface-base text-success-400' :
+                                        'border-neutral-700 bg-surface-elevated text-neutral-600'
                                 }`}>
                                 <Icon size={20} />
                             </div>
                             <span className={`text-xs font-mono transition-colors ${failed && i === step ? 'text-error-400 font-bold' :
-                                    isActive ? 'text-primary-400 font-bold' :
-                                        isCompleted ? 'text-success-400' :
-                                            'text-neutral-600'
+                                isActive ? 'text-primary-400 font-bold' :
+                                    isCompleted ? 'text-success-400' :
+                                        'text-neutral-600'
                                 }`}>
                                 {s.label}
                             </span>

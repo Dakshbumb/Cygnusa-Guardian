@@ -321,6 +321,17 @@ async def delete_candidate(
     return {"success": True, "message": "Candidate deleted"}
 
 
+@app.get("/api/roles")
+async def list_roles():
+    """List all available job roles for resume analysis"""
+    try:
+        with open("job_roles.json", "r") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to load roles: {e}")
+        return []
+
+
 # ==================== Resume Analysis ====================
 
 @app.post("/api/resume/validate")

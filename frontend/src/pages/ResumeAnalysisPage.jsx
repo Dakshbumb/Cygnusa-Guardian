@@ -4,15 +4,31 @@ import { Header } from '../components/Header';
 import { ResumeUploadZone } from '../components/resume/ResumeUploadZone';
 import { ExtractionPipeline } from '../components/resume/ExtractionPipeline';
 import { RankingCard } from '../components/resume/RankingCard';
+import { RoleSelector } from '../components/resume/RoleSelector';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { api } from '../utils/api';
 
 export function ResumeAnalysisPage() {
     const navigate = useNavigate();
     const [view, setView] = useState('upload'); // upload, processing, ranking, error
+    const [roles, setRoles] = useState([]);
+    const [selectedRole, setSelectedRole] = useState(null);
     const [file, setFile] = useState(null);
     const [result, setResult] = useState(null);
     const [candidateId, setCandidateId] = useState(null);
     const [error, setError] = useState(null);
+
+    React.useEffect(() => {
+        const fetchRoles = async () => {
+            try {
+                const response = await api.getRoles();
+                setRoles(response.data);
+            } catch (err) {
+                console.error("Failed to fetch roles", err);
+            }
+        };
+        fetchRoles();
+    }, []);
 
     const handleUpload = (file) => {
         setFile(file);
@@ -26,8 +42,11 @@ export function ResumeAnalysisPage() {
         setResult({
             score: Math.round(apiResult.evidence?.score || 0),
             match: apiResult.rank,
-            skills: apiResult.evidence?.skills_found || [],
-            missing: apiResult.evidence?.missing_critical || [],
+            targetRole: selectedRole?.title || 'Target Role',
+            skills: apiResult.evidence?.skills_extracted || [],
+            missing: (apiResult.evidence?.jd_required || []).filter(
+                s => !(apiResult.evidence?.skills_extracted || []).includes(s)
+            ),
             reasoning: apiResult.evidence?.reasoning,
             justification: apiResult.justification,
             calculation: apiResult.evidence?.match_calculation,
@@ -79,12 +98,26 @@ export function ResumeAnalysisPage() {
                     </div>
 
                     {view === 'upload' && (
-                        <ResumeUploadZone onUploadComplete={handleUpload} />
+                        <div className="space-y-12 animate-fade-in">
+                            <RoleSelector
+                                roles={roles}
+                                selectedRole={selectedRole}
+                                onSelect={setSelectedRole}
+                            />
+
+                            <div className={`transition-all duration-500 overflow-hidden ${selectedRole ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                                <h3 className="text-sm font-mono font-bold text-neutral-500 uppercase tracking-widest text-center mb-6">
+                                    Step 2: Analysis Protocol
+                                </h3>
+                                <ResumeUploadZone onUploadComplete={handleUpload} />
+                            </div>
+                        </div>
                     )}
 
                     {view === 'processing' && (
                         <ExtractionPipeline
                             file={file}
+                            selectedRole={selectedRole}
                             onComplete={handleProcessingComplete}
                             onError={handleProcessingError}
                         />

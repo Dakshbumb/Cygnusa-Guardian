@@ -9,7 +9,7 @@ export function RankingCard({ result, onProceed }) {
             <div className="flex items-start justify-between mb-8">
                 <div>
                     <h2 className="text-2xl font-display font-bold text-white mb-2">Analysis Complete</h2>
-                    <p className="text-neutral-400">Candidate ranked against <span className="text-primary-400">Target Role</span> profile.</p>
+                    <p className="text-neutral-400">Candidate ranked against <span className="text-primary-400">{result.targetRole}</span> profile.</p>
                 </div>
                 <div className="text-right">
                     <div className="text-4xl font-mono font-bold text-primary-400">{result.score}%</div>

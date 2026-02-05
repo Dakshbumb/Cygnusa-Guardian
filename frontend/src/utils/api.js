@@ -89,6 +89,7 @@ export const api = {
     deleteCandidate: (candidateId) => http.delete(`/candidates/${candidateId}`),
 
     // ==================== Resume ====================
+    getRoles: () => http.get('/roles'),
     validateResume: async (file) => {
         const fd = createFormData({ file });
         return http.post('/resume/validate', fd, {
