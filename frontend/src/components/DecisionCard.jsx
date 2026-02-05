@@ -97,7 +97,7 @@ export function DecisionCard({ candidateId, decision, candidate, evidence }) {
                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-xs font-mono uppercase tracking-tight ${showAudit ? 'bg-secondary-600/20 border-secondary-500/50 text-secondary-400' : 'bg-surface-elevated border-surface-overlay text-neutral-500 hover:text-neutral-300'}`}
                                 >
                                     <Terminal size={14} />
-                                    Diagnostic_Trail
+                                    Forensic_Audit_Trail
                                 </button>
 
                                 {shareState.link ? (
@@ -136,100 +136,225 @@ export function DecisionCard({ candidateId, decision, candidate, evidence }) {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* AI Diagnostic Panel (GAP.4 closure) */}
-            {showAudit && decision.audit_trail && (
-                <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    className="border-t border-secondary-900/30 bg-secondary-950/20"
-                >
-                    <div className="p-8 space-y-6">
-                        <div className="flex items-center justify-between border-b border-secondary-500/10 pb-2">
-                            <h3 className="text-[10px] font-bold text-secondary-500 uppercase tracking-[0.2em] font-mono">Forensic_AI_Diagnostics</h3>
-                            <span className="text-[10px] font-mono text-neutral-600">MODEL: {decision.audit_trail.model_used || 'GPT-4-TURBO'}</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-mono text-neutral-500 uppercase">Input_Prompt_Secured</label>
-                                <div className="bg-neutral-900/50 rounded-lg p-4 border border-white/5 h-64 overflow-y-auto custom-scrollbar">
-                                    <pre className="text-[10px] font-mono text-secondary-300 leading-relaxed whitespace-pre-wrap">
-                                        {decision.audit_trail.prompt}
-                                    </pre>
+                {/* AI Diagnostic Panel (GAP.4 closure) */}
+                {/* Forensic AI Audit Trail (USP Implementation) */}
+                {showAudit && decision.audit_trail && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        className="border-t border-secondary-900/30 bg-secondary-950/20"
+                    >
+                        <div className="p-8 space-y-6">
+                            <div className="flex items-center justify-between border-b border-secondary-500/10 pb-4">
+                                <div className="space-y-1">
+                                    <h3 className="text-[10px] font-bold text-secondary-500 uppercase tracking-[0.2em] font-mono">Forensic_AI_Diagnostics_v1</h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-mono text-neutral-600">ID: {decision.transparency_token || 'N/A'}</span>
+                                        <span className="text-[9px] font-mono text-neutral-600 px-1 border border-neutral-800 rounded">SECURED</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] font-mono text-neutral-600 block">MODEL: {decision.audit_trail.model_used || 'GPT-4-TURBO'}</span>
+                                    <span className="text-[9px] font-mono text-success-500/60 block uppercase">Transparency_Verified</span>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-mono text-neutral-500 uppercase">Raw_AI_Response_JSON</label>
-                                <div className="bg-neutral-900/50 rounded-lg p-4 border border-white/5 h-64 overflow-y-auto custom-scrollbar">
-                                    <pre className="text-[10px] font-mono text-success-400 leading-relaxed whitespace-pre-wrap">
-                                        {decision.audit_trail.raw_response}
-                                    </pre>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
 
-            {/* Body Section - Evidence Panel */}
-            <div className="p-8 space-y-8">
-                <EvidencePanel evidence={evidence} candidate={candidate} candidateId={candidateId} />
-
-                {/* Full Forensic Audit Table (Mirroring Export) */}
-                {evidence.integrity?.events?.length > 0 && (
-                    <div className="border-t border-surface-overlay pt-8">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <Shield className="text-secondary-400" size={20} />
-                                <h3 className="text-sm font-bold text-neutral-200 font-mono uppercase tracking-widest">Forensic_Integrity_Audit_Log</h3>
-                            </div>
-                            <span className="text-[10px] font-mono text-neutral-500 bg-surface-base px-2 py-1 rounded border border-surface-overlay">
-                                TOTAL_EVENTS: {evidence.integrity.total_violations}
-                            </span>
-                        </div>
-
-                        <div className="overflow-hidden rounded-xl border border-surface-overlay bg-surface-base/30">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-surface-base border-b border-surface-overlay">
-                                        <th className="px-4 py-3 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Timestamp</th>
-                                        <th className="px-4 py-3 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Event_Type</th>
-                                        <th className="px-4 py-3 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Severity</th>
-                                        <th className="px-4 py-3 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Context</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-surface-overlay">
-                                    {evidence.integrity.events.map((e, i) => (
-                                        <tr key={i} className="hover:bg-surface-elevated/50 transition-colors">
-                                            <td className="px-4 py-3 font-mono text-[10px] text-neutral-400 whitespace-nowrap">
-                                                {e.timestamp?.includes('T') ? e.timestamp.split('T')[1].split('.')[0] : e.timestamp}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className="text-xs font-semibold text-neutral-300">
-                                                    {(e.type || e.event_type || 'unspecified').replace(/_/g, ' ').toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${e.severity === 'critical' ? 'bg-danger-900/40 text-danger-400 border border-danger-500/30' :
-                                                    e.severity === 'high' ? 'bg-orange-900/40 text-orange-400 border border-orange-500/30' :
-                                                        e.severity === 'medium' ? 'bg-warning-900/40 text-warning-400 border border-warning-500/30' :
-                                                            'bg-secondary-900/40 text-secondary-400 border border-secondary-500/30'
-                                                    }`}>
-                                                    {e.severity}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-xs text-neutral-500 italic max-w-xs truncate hover:whitespace-normal transition-all">
-                                                {e.context || 'Forensic baseline verified'}
-                                            </td>
-                                        </tr>
+                            {/* Evidentiary Mapping (New USP Section) */}
+                            {decision.evidentiary_mapping && (
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                    {Object.entries(decision.evidentiary_mapping).map(([section, impact]) => (
+                                        <div key={section} className="bg-surface-base/40 border border-white/5 p-3 rounded-lg flex flex-col items-center text-center gap-1 group">
+                                            <span className="text-[8px] font-mono text-neutral-500 uppercase">{section}</span>
+                                            <span className={`text-[10px] font-bold font-mono tracking-tight ${impact === 'primary_driver' ? 'text-primary-400' :
+                                                impact === 'supporting' ? 'text-success-400' :
+                                                    impact === 'negative' ? 'text-danger-400' : 'text-neutral-400'
+                                                }`}>
+                                                {impact.replace('_', ' ').toUpperCase()}
+                                            </span>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
+                                </div>
+                            )}
+
+                            {/* Forensic Trace (New USP Section) */}
+                            {decision.forensic_trace && decision.forensic_trace.length > 0 && (
+                                <div className="space-y-3">
+                                    <label className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">Forensic_Derivation_Trace</label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {decision.forensic_trace.map((step, i) => (
+                                            <div key={i} className="flex gap-4 items-start bg-surface-base/20 border border-white/5 p-3 rounded-lg hover:bg-surface-base/40 transition-colors">
+                                                <div className="text-[10px] font-mono text-secondary-500 font-bold bg-secondary-900/20 w-6 h-6 flex items-center justify-center rounded border border-secondary-500/20">
+                                                    0{i + 1}
+                                                </div>
+                                                <p className="text-[11px] text-neutral-300 leading-relaxed italic">{step}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-mono text-neutral-500 uppercase">Input_Prompt_Secured</label>
+                                    <div className="bg-neutral-900/50 rounded-lg p-4 border border-white/5 h-64 overflow-y-auto custom-scrollbar">
+                                        <pre className="text-[10px] font-mono text-secondary-300 leading-relaxed whitespace-pre-wrap">
+                                            {decision.audit_trail.prompt}
+                                        </pre>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-mono text-neutral-500 uppercase">Raw_AI_Response_JSON</label>
+                                    <div className="bg-neutral-900/50 rounded-lg p-4 border border-white/5 h-64 overflow-y-auto custom-scrollbar">
+                                        <pre className="text-[10px] font-mono text-success-400 leading-relaxed whitespace-pre-wrap">
+                                            {decision.audit_trail.raw_response}
+                                        </pre>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
+
+                {/* Body Section - Strategic Layer & Evidence */}
+                <div className="p-8 space-y-8">
+
+                    {/* Strategic Cognitive Architecture Profiling (USP Implementation) */}
+                    {decision.cognitive_profile && (
+                        <div className="bg-surface-elevated/40 border border-secondary-500/20 rounded-2xl p-6 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Brain size={80} className="text-secondary-400" />
+                            </div>
+
+                            <div className="flex flex-col md:flex-row gap-8 items-start relative">
+                                <div className="space-y-4 flex-1">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-secondary-900/30 rounded-lg border border-secondary-500/30">
+                                            <Brain className="text-secondary-400" size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xs font-bold text-secondary-400 font-mono uppercase tracking-[0.2em]">Strategic_Cognitive_Profile</h3>
+                                            <p className="text-[10px] text-neutral-500 font-mono">USP: Team_Gap_Diversity_Analysis_v1</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <h2 className="text-2xl font-black text-neutral-100 uppercase tracking-tighter">
+                                            {decision.cognitive_profile.primary_style.replace(/_/g, ' ')}
+                                        </h2>
+                                        <p className="text-sm text-neutral-400 leading-relaxed italic">
+                                            "{decision.cognitive_profile.archetype_description}"
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                        <div className="px-3 py-1 bg-secondary-900/20 border border-secondary-500/20 rounded-full text-[10px] font-bold text-secondary-300">
+                                            PRIMARY_ARCHETYPE
+                                        </div>
+                                        {decision.cognitive_profile.secondary_style && (
+                                            <div className="px-3 py-1 bg-surface-base border border-surface-overlay rounded-full text-[10px] font-bold text-neutral-400 uppercase">
+                                                +{decision.cognitive_profile.secondary_style.replace(/_/g, ' ')}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 w-full md:w-64">
+                                    <label className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">Cognitive_Competency_Mapping</label>
+                                    <div className="space-y-3">
+                                        {Object.entries(decision.cognitive_profile.cognitive_scores).map(([trait, score]) => (
+                                            <div key={trait} className="space-y-1">
+                                                <div className="flex justify-between text-[10px] font-mono">
+                                                    <span className="text-neutral-500 uppercase">{trait}</span>
+                                                    <span className="text-secondary-400">{score}/10</span>
+                                                </div>
+                                                <div className="h-1 bg-surface-base rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${score * 10}%` }}
+                                                        className="h-full bg-secondary-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-primary-900/10 border border-primary-500/20 rounded-xl w-full md:w-72 space-y-3">
+                                    <div className="flex items-center gap-2 text-[10px] font-bold text-primary-400 uppercase font-mono">
+                                        <Shield size={12} />
+                                        Enterprise_Team_Gap_Fit
+                                    </div>
+                                    <p className="text-xs text-neutral-300 leading-relaxed">
+                                        {decision.cognitive_profile.team_gap_fit}
+                                    </p>
+                                    <div className="pt-2 border-t border-primary-500/10">
+                                        <span className="text-[9px] font-mono text-neutral-500 italic block">DERIVATION_LOGIC:</span>
+                                        <span className="text-[10px] text-neutral-400 block mt-1 leading-snug">
+                                            {decision.cognitive_profile.transparency_logic}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <EvidencePanel evidence={evidence} candidate={candidate} candidateId={candidateId} />
+
+                    {/* Full Forensic Audit Table (Mirroring Export) */}
+                    {evidence.integrity?.events?.length > 0 && (
+                        <div className="border-t border-surface-overlay pt-8">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <Shield className="text-secondary-400" size={20} />
+                                    <h3 className="text-sm font-bold text-neutral-200 font-mono uppercase tracking-widest">Forensic_Integrity_Audit_Log</h3>
+                                </div>
+                                <span className="text-[10px] font-mono text-neutral-500 bg-surface-base px-2 py-1 rounded border border-surface-overlay">
+                                    TOTAL_EVENTS: {evidence.integrity.total_violations}
+                                </span>
+                            </div>
+
+                            <div className="overflow-hidden rounded-xl border border-surface-overlay bg-surface-base/30">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-surface-base border-b border-surface-overlay">
+                                            <th className="px-4 py-3 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Timestamp</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Event_Type</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Severity</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Context</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-surface-overlay">
+                                        {evidence.integrity.events.map((e, i) => (
+                                            <tr key={i} className="hover:bg-surface-elevated/50 transition-colors">
+                                                <td className="px-4 py-3 font-mono text-[10px] text-neutral-400 whitespace-nowrap">
+                                                    {e.timestamp?.includes('T') ? e.timestamp.split('T')[1].split('.')[0] : e.timestamp}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className="text-xs font-semibold text-neutral-300">
+                                                        {(e.type || e.event_type || 'unspecified').replace(/_/g, ' ').toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${e.severity === 'critical' ? 'bg-danger-900/40 text-danger-400 border border-danger-500/30' :
+                                                        e.severity === 'high' ? 'bg-orange-900/40 text-orange-400 border border-orange-500/30' :
+                                                            e.severity === 'medium' ? 'bg-warning-900/40 text-warning-400 border border-warning-500/30' :
+                                                                'bg-secondary-900/40 text-secondary-400 border border-secondary-500/30'
+                                                        }`}>
+                                                        {e.severity}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-xs text-neutral-500 italic max-w-xs truncate hover:whitespace-normal transition-all">
+                                                    {e.context || 'Forensic baseline verified'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

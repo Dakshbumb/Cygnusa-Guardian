@@ -289,7 +289,11 @@ async def create_candidate(
 
 @app.get("/api/candidates/{candidate_id}")
 async def get_candidate(candidate_id: str, current_user: dict = Depends(get_optional_user)):
-    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+    candidate = active_sessions.get(candidate_id)
+    if not candidate:
+        candidate = db.get_candidate(candidate_id)
+        if candidate:
+            active_sessions[candidate_id] = candidate
     
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -311,23 +315,11 @@ async def list_candidates(
     status: Optional[str] = None,
     recruiter: dict = Depends(require_recruiter)
 ):
-    """List all candidates, optionally filtered by status"""
-    candidates = db.get_all_candidates(status=status)
+    """Shallow list of candidates for dashboard (Fast & Lightweight)"""
+    candidates = db.get_candidates_summary(status=status)
     return {
         "total": len(candidates),
-        "candidates": [
-            {
-                "id": c.id,
-                "name": c.name,
-                "email": c.email,
-                "job_title": c.job_title,
-                "status": c.status,
-                "created_at": c.created_at,
-                "has_decision": c.final_decision is not None,
-                "final_decision": c.final_decision.model_dump() if c.final_decision else None
-            }
-            for c in candidates
-        ]
+        "candidates": candidates
     }
 
 
@@ -1053,6 +1045,7 @@ async def save_keystroke_data(
     try:
         new_intervals_data = json.loads(intervals_json)
         new_intervals = [KeystrokeInterval(**i) for i in new_intervals_data]
+        logger.info(f"Received {len(new_intervals)} keystroke intervals for {candidate_id}")
         
         if candidate.keystroke_evidence is None:
             candidate.keystroke_evidence = KeystrokeEvidence()
@@ -1074,6 +1067,8 @@ async def save_keystroke_data(
                     description=f"Significant shift in typing rhythm detected. Rhythm consistency: {candidate.keystroke_evidence.rhythm_score}%",
                     impact="negative"
                 )
+        
+        db.save_candidate(candidate)
         
         return {
             "success": True,
@@ -1501,7 +1496,8 @@ async def generate_report(candidate_id: str):
             mcq_evidence=candidate.mcq_evidence,
             psychometric_evidence=candidate.psychometric_evidence,
             integrity_evidence=integrity_evidence,
-            text_evidence=candidate.text_answer_evidence
+            text_evidence=candidate.text_answer_evidence,
+            keystroke_evidence=candidate.keystroke_evidence
         )
     except Exception as e:
         logger.error(f"Decision generation failed for {candidate_id}: {e}")

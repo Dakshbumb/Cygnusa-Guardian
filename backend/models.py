@@ -135,11 +135,29 @@ class TextAnswerEvidence(BaseModel):
     quality_score: Optional[float] = None  # 0-10 scale, can be AI-assessed
 
 
+class CognitiveStyle(str, Enum):
+    """Cognitive archetypes for team mapping"""
+    ARCHITECTURAL = "Architectural_Thinker"
+    TACTICAL = "Tactical_Executor"
+    INNOVATOR = "Creative_Innovator"
+    ANALYST = "Deep_Analyst"
+    GENERALIST = "Pragmatic_Generalist"
+
+class CognitiveProfile(BaseModel):
+    """Strategic Cognitive Architecture Profiling - USP Implementation"""
+    primary_style: CognitiveStyle
+    secondary_style: Optional[CognitiveStyle] = None
+    cognitive_scores: Dict[str, float] # abstraction, execution_speed, precision, creativity
+    team_gap_fit: str # How this candidate fills specific enterprise team gaps
+    archetype_description: str
+    transparency_logic: str # Explanation of how this profile was derived
+
 class PsychometricEvidence(BaseModel):
-    """Psychometric slider evidence - self-assessment data"""
+    """Enhanced Psychometric evidence including Cognitive Profiling"""
     competencies: Dict[str, float]
     weak_areas: List[str]
     strong_areas: List[str]
+    cognitive_profile: Optional[CognitiveProfile] = None # The strategic layer
     interpretation: Optional[str] = None
 
 
@@ -182,12 +200,16 @@ class FinalDecision(BaseModel):
     confidence: str  # high, medium, low
     conflict_analysis: Optional[str] = None
     conflict_score: Optional[int] = None
-    reasoning: List[str] = Field(min_length=1, max_length=10) # Increased max length
+    reasoning: List[str] = Field(min_length=1, max_length=10)
     role_fit: str
     next_steps: str
     evidence_summary: Dict
+    evidentiary_mapping: Optional[Dict[str, str]] = None # section -> impact (e.g., "coding": "primary_driver")
+    forensic_trace: Optional[List[str]] = None # Multi-step derivation of the final verdict
+    cognitive_profile: Optional[CognitiveProfile] = None # Strategic mapping USP
     audit_trail: Dict  # Contains the exact AI prompt + raw response
-    generated_at: str
+    transparency_token: str # Unique forensic signature
+    generated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
 class DecisionNode(BaseModel):
@@ -196,7 +218,7 @@ class DecisionNode(BaseModel):
     This is the core of the forensic "Glass-Box" UI.
     """
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
-    node_type: str # RESUME, CODE, MCQ, TEXT, INTEGRITY, FINAL
+    node_type: str # RESUME, CODE, MCQ, TEXT, INTEGRITY, FINAL, COGNITIVE
     title: str
     impact: str # positive, neutral, negative
     description: str
@@ -235,6 +257,7 @@ class CandidateProfile(BaseModel):
     mcq_evidence: Optional[List[MCQEvidence]] = None
     text_answer_evidence: Optional[List[TextAnswerEvidence]] = None
     psychometric_evidence: Optional[PsychometricEvidence] = None
+    cognitive_profile: Optional[CognitiveProfile] = None # Direct access to strategic layer
     integrity_evidence: Optional[IntegrityEvidence] = None
     video_evidence: Optional[VideoEvidence] = None  # Webcam proctoring
     keystroke_evidence: Optional[KeystrokeEvidence] = None # Typing DNA

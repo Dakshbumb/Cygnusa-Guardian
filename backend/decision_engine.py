@@ -69,7 +69,8 @@ class ExplainableDecisionEngine:
         mcq_evidence: Optional[List[MCQEvidence]],
         psychometric_evidence: Optional[PsychometricEvidence],
         integrity_evidence: Optional[IntegrityEvidence],
-        text_evidence: Optional[List[TextAnswerEvidence]] = None
+        text_evidence: Optional[List[TextAnswerEvidence]] = None,
+        keystroke_evidence: Optional["KeystrokeEvidence"] = None
     ) -> FinalDecision:
         """
         Generate final hiring decision with full audit trail.
@@ -77,7 +78,8 @@ class ExplainableDecisionEngine:
         # Step 1: Build evidence summary (pre-calculated, no AI)
         evidence_summary = self._build_evidence_summary(
             resume_evidence, code_evidence, mcq_evidence,
-            psychometric_evidence, integrity_evidence, text_evidence
+            psychometric_evidence, integrity_evidence, text_evidence,
+            keystroke_evidence
         )
         
         # Step 2: Apply deterministic rules first
@@ -118,16 +120,23 @@ class ExplainableDecisionEngine:
             candidate_id=candidate_id,
             outcome=decision_data.get('outcome', 'NO_HIRE'),
             confidence=decision_data.get('confidence', 'low'),
+            conflict_score=decision_data.get('conflict_score', 0),
+            conflict_analysis=decision_data.get('conflict_analysis', 'N/A'),
             reasoning=decision_data.get('reasoning', ['Unable to generate reasoning']),
             role_fit=decision_data.get('role_fit', 'Unable to determine'),
             next_steps=decision_data.get('next_steps', 'Manual review required'),
             evidence_summary=evidence_summary,
+            evidentiary_mapping=decision_data.get('evidentiary_mapping', {}),
+            forensic_trace=decision_data.get('forensic_trace', []),
+            cognitive_profile=decision_data.get('cognitive_profile'),
             audit_trail={
                 'prompt': prompt,
                 'raw_response': raw_response,
                 'model_used': model_used,
-                'auto_rules_applied': auto_decision is not None
+                'auto_rules_applied': auto_decision is not None,
+                'audit_standard': 'FORENSIC_V1'
             },
+            transparency_token=f"AUDIT-{uuid.uuid4().hex[:8].upper()}-{int(time.time())}",
             generated_at=datetime.now().isoformat()
         )
     
@@ -138,7 +147,8 @@ class ExplainableDecisionEngine:
         mcq_evidence: Optional[List[MCQEvidence]],
         psychometric_evidence: Optional[PsychometricEvidence],
         integrity_evidence: Optional[IntegrityEvidence],
-        text_evidence: Optional[List[TextAnswerEvidence]] = None
+        text_evidence: Optional[List[TextAnswerEvidence]] = None,
+        keystroke_evidence: Optional["KeystrokeEvidence"] = None
     ) -> dict:
         """
         Build a structured summary of all evidence.
@@ -287,8 +297,17 @@ class ExplainableDecisionEngine:
                     for e in integrity_evidence.events[:5]  # Last 5 events
                 ]
             }
+        # Keystroke summary
+        if keystroke_evidence:
+            keystroke_data = {
+                'rhythm_score': keystroke_evidence.rhythm_score,
+                'is_anomaly': keystroke_evidence.is_anomaly,
+                'baseline_established': keystroke_evidence.baseline_established,
+                'anomaly_reason': keystroke_evidence.anomaly_reason,
+                'keystrokes_captured': len(keystroke_evidence.intervals)
+            }
         else:
-            integrity_data = {'total_violations': 0, 'severity_score': 0, 'trustworthiness': 'High'}
+            keystroke_data = {'rhythm_score': 0, 'is_anomaly': False, 'baseline_established': False}
             
         return {
             'resume': resume_data,
@@ -296,7 +315,8 @@ class ExplainableDecisionEngine:
             'mcqs': mcq_data,
             'psychometric': psych_data,
             'integrity': integrity_data,
-            'reasoning_probes': text_data
+            'reasoning_probes': text_data,
+            'biometrics': keystroke_data
         }
     
     def _apply_auto_rules(self, evidence: dict) -> Optional[dict]:
@@ -415,6 +435,32 @@ Provide a JSON response with this exact structure:
         "Second reason citing specific data",
         "Third reason about overall fit"
     ],
+    "evidentiary_mapping": {{
+        "resume": "primary_driver" | "supporting" | "negative",
+        "coding": "primary_driver" | "supporting" | "negative",
+        "mcqs": "primary_driver" | "supporting" | "negative",
+        "integrity": "primary_driver" | "supporting" | "negative",
+        "behavioral": "primary_driver" | "supporting" | "negative"
+    }},
+    "forensic_trace": [
+        "Step 1: Evidence extraction and normalization...",
+        "Step 2: Cross-referencing resume claims against coding performance...",
+        "Step 3: Evaluating integrity signals during high-stakes segments...",
+        "Step 4: Synthesizing final verdict based on weighted impact..."
+    ],
+    "cognitive_profile": {{
+        "primary_style": "Architectural_Thinker" | "Tactical_Executor" | "Creative_Innovator" | "Deep_Analyst" | "Pragmatic_Generalist",
+        "secondary_style": "Optional style from same list",
+        "cognitive_scores": {{
+            "abstraction": 0-10,
+            "execution_speed": 0-10,
+            "precision": 0-10,
+            "creativity": 0-10
+        }},
+        "team_gap_fit": "Explain how this cognitive style fills specific gaps (e.g., 'Adds deep technical oversight to a tactical team')",
+        "archetype_description": "2-sentence summary of their cognitive behavior",
+        "transparency_logic": "Explain which evidence (e.g., 'High pass rate + complex code structure') led to this profile"
+    }},
     "conflict_analysis": "Summary of inconsistencies found, or 'No conflicts detected'",
     "role_fit": "Specific role recommendation or why not suitable",
     "next_steps": "Concrete next action for recruiter"
@@ -425,6 +471,7 @@ CRITICAL REQUIREMENTS:
 2. Each reasoning point must cite actual data
 3. Be direct and actionable
 4. EXPLAIN FAILS BETTER THAN PASSES: If rejecting, be brutally precise about the gaps.
+5. FORENSIC TRACE: This must be a step-by-step derivation of how you reached the conclusion.
 
 Respond with ONLY the JSON, no additional text."""
     
@@ -628,7 +675,7 @@ class KeystrokeDynamicsAnalyzer:
     Uses dwell time (keydown-keyup) and flight time (keyup-keydown).
     """
     
-    def __init__(self, baseline_keys: int = 200, threshold_z: float = 3.0):
+    def __init__(self, baseline_keys: int = 50, threshold_z: float = 3.0):
         self.baseline_keys = baseline_keys
         self.threshold_z = threshold_z
         
