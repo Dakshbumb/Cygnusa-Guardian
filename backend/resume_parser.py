@@ -397,36 +397,39 @@ class ClaimExtractor:
         """
         try:
             if claim_type == "cgpa":
-                # Extract the numeric value
-                value_str = match.group(1)
-                value = float(value_str)
-                if value >= 9.5 or value >= 3.9:  # Top-tier GPA
-                    return "high"
-                elif value >= 8.5 or value >= 3.5:
-                    return "medium"
+                # Extract the numeric value using group(1) if it exists
+                if match.lastindex and match.lastindex >= 1:
+                    value_str = match.group(1)
+                    value = float(value_str)
+                    if value >= 9.5 or value >= 3.9:  # Top-tier GPA
+                        return "high"
+                    elif value >= 8.5 or value >= 3.5:
+                        return "medium"
                 return "low"
             
             elif claim_type == "leadership":
-                team_size = int(match.group(1))
-                if team_size >= 20:
-                    return "high"
-                elif team_size >= 10:
-                    return "medium"
+                if match.lastindex and match.lastindex >= 1:
+                    team_size = int(match.group(1))
+                    if team_size >= 20:
+                        return "high"
+                    elif team_size >= 10:
+                        return "medium"
                 return "low"
             
             elif claim_type == "impact":
                 # Check for unrealistic percentages or amounts
-                value_str = match.group(1).replace(",", "").lower()
-                if "m" in value_str or "million" in value_str:
-                    return "high"
-                try:
-                    value = float(value_str.replace("k", "000"))
-                    if value >= 100:  # 100% or $100k+
+                if match.lastindex and match.lastindex >= 1:
+                    value_str = match.group(1).replace(",", "").lower()
+                    if "m" in value_str or "million" in value_str:
                         return "high"
-                    elif value >= 50:
-                        return "medium"
-                except:
-                    pass
+                    try:
+                        value = float(value_str.replace("k", "000"))
+                        if value >= 100:  # 100% or $100k+
+                            return "high"
+                        elif value >= 50:
+                            return "medium"
+                    except:
+                        pass
                 return "medium"
             
             elif claim_type == "company":
@@ -434,11 +437,12 @@ class ClaimExtractor:
                 return "high"
             
             elif claim_type == "experience":
-                years = int(match.group(1)) if match.group(1) else 0
-                if years >= 10:
-                    return "high"
-                elif years >= 5:
-                    return "medium"
+                if match.lastindex and match.lastindex >= 1:
+                    years = int(match.group(1)) if match.group(1).isdigit() else 0
+                    if years >= 10:
+                        return "high"
+                    elif years >= 5:
+                        return "medium"
                 return "low"
         except (ValueError, IndexError):
             pass
