@@ -622,6 +622,86 @@ Respond with ONLY a JSON object:
             }
 
 
+class KeystrokeDynamicsAnalyzer:
+    """
+    Analyzes typing rhythm (Biometric DNA) to detect participant handover or macros.
+    Uses dwell time (keydown-keyup) and flight time (keyup-keydown).
+    """
+    
+    def __init__(self, baseline_keys: int = 200, threshold_z: float = 3.0):
+        self.baseline_keys = baseline_keys
+        self.threshold_z = threshold_z
+        
+    def analyze_intervals(self, candidate_id: str, new_intervals: List["KeystrokeInterval"], existing_evidence: "KeystrokeEvidence") -> "KeystrokeEvidence":
+        """
+        Analyze a batch of keystroke intervals and update evidence.
+        """
+        import statistics
+        
+        # Add new intervals to evidence
+        existing_evidence.intervals.extend(new_intervals)
+        
+        # Need enough data for a baseline
+        if len(existing_evidence.intervals) < self.baseline_keys:
+            existing_evidence.baseline_established = False
+            return existing_evidence
+            
+        existing_evidence.baseline_established = True
+        
+        # Split into baseline and target (current batch)
+        baseline = existing_evidence.intervals[:self.baseline_keys]
+        # Analyze the most recent chunk (last 50 keys)
+        current_chunk = existing_evidence.intervals[-50:] if len(new_intervals) > 0 else []
+        
+        if not current_chunk:
+            return existing_evidence
+            
+        # Calculate baseline stats
+        dwells_base = [i.dwell_time for i in baseline]
+        flights_base = [i.flight_time for i in baseline if i.flight_time > 0]
+        
+        mean_dwell = statistics.mean(dwells_base)
+        std_dwell = statistics.stdev(dwells_base) if len(dwells_base) > 1 else 10
+        
+        mean_flight = statistics.mean(flights_base) if flights_base else 0
+        std_flight = statistics.stdev(flights_base) if len(flights_base) > 1 else 50
+        
+        # Check current chunk for anomalies
+        dwell_anomalies = 0
+        flight_anomalies = 0
+        
+        for interval in current_chunk:
+            # Dwell time Z-score
+            z_dwell = abs(interval.dwell_time - mean_dwell) / (std_dwell or 1)
+            if z_dwell > self.threshold_z:
+                dwell_anomalies += 1
+                
+            # Flight time Z-score
+            if interval.flight_time > 0:
+                z_flight = abs(interval.flight_time - mean_flight) / (std_flight or 1)
+                if z_flight > self.threshold_z:
+                    flight_anomalies += 1
+                    
+        # Calculate consistency score (0-100)
+        total_checks = len(current_chunk) * 2
+        anomaly_count = dwell_anomalies + flight_anomalies
+        
+        rhythm_score = int(max(0, 100 - (anomaly_count / (total_checks or 1)) * 300))
+        existing_evidence.rhythm_score = rhythm_score
+        
+        # Determine if it's a high-confidence anomaly
+        if rhythm_score < 40:
+            existing_evidence.is_anomaly = True
+            existing_evidence.anomaly_reason = "Significant shift in typing rhythm detected (Bometric DNA mismatch)"
+        else:
+            # Don't reset is_anomaly if it was already True (sticky violation)
+            # but update reason if it's currently low
+            if rhythm_score < 60:
+                existing_evidence.anomaly_reason = "Unstable typing rhythm - monitoring for handover"
+                
+        return existing_evidence
+
+
 # Demo function
 def demo_decision():
     """Demo the decision engine"""

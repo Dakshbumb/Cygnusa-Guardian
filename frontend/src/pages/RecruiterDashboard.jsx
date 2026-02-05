@@ -6,6 +6,7 @@ import { DecisionCard, EvidencePanel } from '../components/DecisionCard';
 import { AuditTrail } from '../components/AuditTrail';
 import { DecisionTimeline } from '../components/DecisionTimeline';
 import { ResumeAuthenticityPanel } from '../components/ResumeAuthenticityPanel';
+import { KeystrokeDynamicsPanel } from '../components/KeystrokeDynamicsPanel';
 import {
     Loader2, ArrowLeft, Download, Share2,
     User, Mail, Briefcase, Calendar,
@@ -447,6 +448,13 @@ export function RecruiterDashboard() {
                             <ResumeAuthenticityPanel
                                 candidate={candidate}
                                 candidateId={candidateId}
+                            />
+                        )}
+
+                        {/* Keystroke DNA Biometrics */}
+                        {candidate && (
+                            <KeystrokeDynamicsPanel
+                                candidate={candidate}
                             />
                         )}
 

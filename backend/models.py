@@ -204,6 +204,22 @@ class DecisionNode(BaseModel):
     predicted_rank: Optional[float] = None
 
 
+class KeystrokeInterval(BaseModel):
+    """Millisecond-level timing between keystrokes"""
+    key: str
+    dwell_time: int        # keydown to keyup (ms)
+    flight_time: int       # previous keyup to current keydown (ms)
+    timestamp: float
+
+class KeystrokeEvidence(BaseModel):
+    """Biometric typing rhythm evidence"""
+    intervals: List[KeystrokeInterval] = []
+    rhythm_score: int = 100 # 0-100 (100 = consistent with baseline)
+    is_anomaly: bool = False
+    anomaly_reason: Optional[str] = None
+    baseline_established: bool = False
+
+
 class CandidateProfile(BaseModel):
     """Complete candidate data - single source of truth"""
     id: str
@@ -221,6 +237,7 @@ class CandidateProfile(BaseModel):
     psychometric_evidence: Optional[PsychometricEvidence] = None
     integrity_evidence: Optional[IntegrityEvidence] = None
     video_evidence: Optional[VideoEvidence] = None  # Webcam proctoring
+    keystroke_evidence: Optional[KeystrokeEvidence] = None # Typing DNA
     decision_nodes: List[DecisionNode] = [] # The Forensic Timeline
     final_decision: Optional[FinalDecision] = None
     

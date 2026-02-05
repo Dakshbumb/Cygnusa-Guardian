@@ -1,6 +1,7 @@
 import Editor from '@monaco-editor/react';
 import { useState } from 'react';
 import { Play, RotateCcw, Check, X, Clock, AlertCircle, Terminal, Code } from 'lucide-react';
+import { api } from '../utils/api';
 
 /**
  * CodeEditor - Monaco-based code editor with test results display
@@ -72,6 +73,71 @@ export function CodeEditor({
                     language={currentLanguage === 'cpp' ? 'cpp' : currentLanguage}
                     value={code}
                     onChange={(value) => setCode(value || '')}
+                    onMount={(editor) => {
+                        // Keystroke DNA Tracking logic
+                        let lastKeyUpTime = performance.now();
+                        let keyDepths = {}; // key -> downTime
+                        let intervalBuffer = [];
+
+                        const flushKeystrokes = async () => {
+                            if (intervalBuffer.length === 0) return;
+                            const currentBuffer = [...intervalBuffer];
+                            intervalBuffer = [];
+
+                            try {
+                                // We need candidateId here. It's usually passed via context or props.
+                                // For now, we'll assume it's available in the URL or props.
+                                const candidateId = window.location.pathname.split('/').pop();
+                                await api.submitKeystrokeData(candidateId, currentBuffer);
+                            } catch (err) {
+                                console.error('Failed to flush Keystroke DNA:', err);
+                            }
+                        };
+
+                        // Flush every 30 seconds or 50 keys
+                        const interval = setInterval(flushKeystrokes, 30000);
+
+                        editor.onKeyDown((e) => {
+                            const now = performance.now();
+                            const key = e.browserEvent.key;
+
+                            if (!keyDepths[key]) {
+                                keyDepths[key] = now;
+                                const flightTime = Math.round(now - lastKeyUpTime);
+
+                                // Record start of interval (dwell will be updated on keyup)
+                                // Standard interval entry: {key, dwell, flight, timestamp}
+                                // We'll store temporary entries and update on keyup
+                            }
+                        });
+
+                        editor.onKeyUp((e) => {
+                            const now = performance.now();
+                            const key = e.browserEvent.key;
+                            const downTime = keyDepths[key];
+
+                            if (downTime) {
+                                const dwellTime = Math.round(now - downTime);
+                                const flightTime = Math.round(downTime - lastKeyUpTime);
+
+                                intervalBuffer.push({
+                                    key: key,
+                                    dwell_time: dwellTime,
+                                    flight_time: flightTime > 5000 ? 0 : flightTime, // Cap at 5s idle
+                                    timestamp: Date.now() / 1000
+                                });
+
+                                delete keyDepths[key];
+                                lastKeyUpTime = now;
+
+                                if (intervalBuffer.length >= 50) {
+                                    flushKeystrokes();
+                                }
+                            }
+                        });
+
+                        return () => clearInterval(interval);
+                    }}
                     theme="vs-dark"
                     options={{
                         minimap: { enabled: false },

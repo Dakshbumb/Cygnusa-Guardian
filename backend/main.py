@@ -40,7 +40,8 @@ ENV = os.getenv("ENV", "development")
 from models import (
     CandidateProfile, IntegrityEvent, IntegrityEvidence,
     MCQEvidence, PsychometricEvidence, JobDescription, TextAnswerEvidence,
-    VideoSnapshot, VideoEvidence, User, UserRole, LoginRequest, LoginResponse
+    VideoSnapshot, VideoEvidence, User, UserRole, LoginRequest, LoginResponse,
+    KeystrokeEvidence, KeystrokeInterval
 )
 from resume_parser import ResumeGatekeeper
 from code_executor import CodeSandbox, DEMO_QUESTIONS, DEMO_MCQS
@@ -96,8 +97,9 @@ os.makedirs("snapshots", exist_ok=True)  # For video proctoring snapshots
 db = Database()
 code_sandbox = CodeSandbox()
 decision_engine = ExplainableDecisionEngine(use_gemini=True)
-from decision_engine import ShadowProctorEngine
+from decision_engine import ShadowProctorEngine, KeystrokeDynamicsAnalyzer
 shadow_proctor = ShadowProctorEngine()
+keystroke_analyzer = KeystrokeDynamicsAnalyzer()
 resume_validator = ResumeValidator()
 
 # In-memory cache for active sessions (for faster access)
@@ -1001,6 +1003,54 @@ async def submit_claim_probe(
         "response_quality": response_quality,
         "message": f"Claim verification recorded: {response_quality}"
     }
+
+
+@app.post("/api/assessment/keystroke-data")
+async def save_keystroke_data(
+    candidate_id: str = Form(...),
+    intervals_json: str = Form(...)  # JSON string of List[KeystrokeInterval]
+):
+    """
+    Save and analyze a batch of keystroke rhythm data.
+    """
+    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    
+    try:
+        new_intervals_data = json.loads(intervals_json)
+        new_intervals = [KeystrokeInterval(**i) for i in new_intervals_data]
+        
+        if candidate.keystroke_evidence is None:
+            candidate.keystroke_evidence = KeystrokeEvidence()
+            
+        # Analyze and update
+        candidate.keystroke_evidence = keystroke_analyzer.analyze_intervals(
+            candidate_id, new_intervals, candidate.keystroke_evidence
+        )
+        
+        # If a serious anomaly is detected for the first time, record it
+        if candidate.keystroke_evidence.is_anomaly:
+            # Check if we already have a node for this
+            has_node = any(n.node_type == "INTEGRITY" and "Keystroke" in n.title for n in candidate.decision_nodes)
+            if not has_node:
+                add_decision_node(
+                    candidate_id=candidate_id,
+                    node_type="INTEGRITY",
+                    title="Biometric Anomaly: Keystroke DNA Mismatch",
+                    description=f"Significant shift in typing rhythm detected. Rhythm consistency: {candidate.keystroke_evidence.rhythm_score}%",
+                    impact="negative"
+                )
+        
+        return {
+            "success": True,
+            "rhythm_score": candidate.keystroke_evidence.rhythm_score,
+            "is_anomaly": candidate.keystroke_evidence.is_anomaly,
+            "baseline_established": candidate.keystroke_evidence.baseline_established
+        }
+    except Exception as e:
+        logger.error(f"Failed to process keystroke data: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @app.get("/api/assessment/authenticity-score/{candidate_id}")

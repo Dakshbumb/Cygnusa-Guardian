@@ -217,6 +217,15 @@ export const api = {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
     },
+    submitKeystrokeData: async (candidateId, intervals) => {
+        const fd = createFormData({
+            candidate_id: candidateId,
+            intervals_json: JSON.stringify(intervals)
+        });
+        return http.post('/assessment/keystroke-data', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
     getAuthenticityScore: (candidateId) => http.get(`/assessment/authenticity-score/${candidateId}`),
 
     // ==================== Integrity ====================
