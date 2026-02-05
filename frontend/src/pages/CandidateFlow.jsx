@@ -11,6 +11,7 @@ import {
     CheckCircle, AlertCircle, Timer, FileText,
     ChevronRight
 } from 'lucide-react';
+import { ShadowProber } from '../components/ShadowProber';
 
 /**
  * CandidateFlow - Main assessment page for candidates
@@ -41,6 +42,7 @@ export function CandidateFlow() {
     const [psychScores, setPsychScores] = useState({});
     const [textAnswer, setTextAnswer] = useState(''); // Current text answer input
     const [violationCount, setViolationCount] = useState(0);
+    const [activeProbe, setActiveProbe] = useState(null); // { questionId, code }
 
     const [completedSections, setCompletedSections] = useState({
         coding: false,
@@ -150,6 +152,11 @@ export function CandidateFlow() {
             setError('Failed to submit code. Please try again.');
         } finally {
             setSubmitting(false);
+            // Trigger Shadow Probe after submission
+            setActiveProbe({
+                questionId: question.id,
+                code: code
+            });
         }
     };
 
@@ -302,6 +309,16 @@ export function CandidateFlow() {
     return (
         <div className="min-h-screen bg-surface-base text-neutral-50 font-sans selection:bg-primary-500 selection:text-white flex flex-col">
             <Header />
+
+            {/* Shadow Deep Probe Overlay */}
+            {activeProbe && (
+                <ShadowProber
+                    candidateId={candidateId}
+                    questionId={activeProbe.questionId}
+                    code={activeProbe.code}
+                    onComplete={() => setActiveProbe(null)}
+                />
+            )}
 
             {/* Integrity Monitor (fixed) */}
             <IntegrityMonitor

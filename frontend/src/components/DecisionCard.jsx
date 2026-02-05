@@ -481,6 +481,50 @@ export function EvidencePanel({ evidence }) {
                     )}
                 </div>
             )
+        },
+        {
+            key: 'shadow_probes',
+            title: 'Shadow_Deep_Probes',
+            icon: Brain,
+            color: 'primary',
+            render: () => {
+                // Filter text_evidence for items starting with "Deep Probe:" in competency
+                const probes = candidate.text_evidence?.filter(e => e.competency?.startsWith('Deep Probe:')) || [];
+
+                if (probes.length === 0) return (
+                    <div className="text-center py-4 opacity-40 font-mono text-[10px] uppercase">
+                        No_Probes_Triggered
+                    </div>
+                );
+
+                return (
+                    <div className="space-y-4">
+                        {probes.map((p, i) => (
+                            <div key={i} className="space-y-2 p-3 rounded-lg bg-surface-base/50 border border-primary-500/20">
+                                <div className="flex items-start gap-2">
+                                    <div className="w-4 h-4 mt-0.5 rounded-full bg-primary-500/20 flex items-center justify-center border border-primary-500/40">
+                                        <div className="w-1.5 h-1.5 bg-primary-400 rounded-full animate-pulse" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-mono text-primary-300 font-bold uppercase tracking-tight truncate">
+                                            {p.competency.replace('Deep Probe: ', '')}
+                                        </p>
+                                        <p className="text-[11px] text-neutral-300 mt-1 leading-relaxed">
+                                            {p.question_text}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="pl-6 border-l border-primary-500/30">
+                                    <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1.5 text-[9px]">RESPONSE_BUFFERED:</p>
+                                    <p className="text-xs text-neutral-400 italic bg-neutral-900/40 p-2 rounded">
+                                        "{p.answer_text}"
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
         }
     ];
 

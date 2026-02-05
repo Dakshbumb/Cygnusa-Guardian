@@ -4,6 +4,7 @@ import { api, BASE_URL } from '../utils/api';
 import { Header } from '../components/Header';
 import { DecisionCard, EvidencePanel } from '../components/DecisionCard';
 import { AuditTrail } from '../components/AuditTrail';
+import { DecisionTimeline } from '../components/DecisionTimeline';
 import {
     Loader2, ArrowLeft, Download, Share2,
     User, Mail, Briefcase, Calendar,
@@ -380,6 +381,9 @@ export function RecruiterDashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* Decision Node Timeline (Forensic Scrubber) */}
+                <DecisionTimeline nodes={candidate.decision_nodes} />
 
                 {/* Dashboard Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

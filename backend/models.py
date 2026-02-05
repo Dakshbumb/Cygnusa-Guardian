@@ -165,6 +165,20 @@ class FinalDecision(BaseModel):
     generated_at: str
 
 
+class DecisionNode(BaseModel):
+    """
+    A single point in the assessment timeline that influenced the final decision.
+    This is the core of the forensic "Glass-Box" UI.
+    """
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+    node_type: str # RESUME, CODE, MCQ, TEXT, INTEGRITY, FINAL
+    title: str
+    impact: str # positive, neutral, negative
+    description: str
+    evidence_id: Optional[str] = None # ID of the specific question or event
+    predicted_rank: Optional[float] = None
+
+
 class CandidateProfile(BaseModel):
     """Complete candidate data - single source of truth"""
     id: str
@@ -182,6 +196,7 @@ class CandidateProfile(BaseModel):
     psychometric_evidence: Optional[PsychometricEvidence] = None
     integrity_evidence: Optional[IntegrityEvidence] = None
     video_evidence: Optional[VideoEvidence] = None  # Webcam proctoring
+    decision_nodes: List[DecisionNode] = [] # The Forensic Timeline
     final_decision: Optional[FinalDecision] = None
     
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())

@@ -183,6 +183,24 @@ export const api = {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
     },
+    generateProbe: async (candidateId, questionId, code) => {
+        const fd = createFormData({ candidate_id: candidateId, question_id: questionId, code });
+        return http.post('/assessment/probe', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
+    submitProbe: async (candidateId, questionId, probeQuestion, answer, targetConcept) => {
+        const fd = createFormData({
+            candidate_id: candidateId,
+            question_id: questionId,
+            probe_question: probeQuestion,
+            answer: answer,
+            target_concept: targetConcept
+        });
+        return http.post('/assessment/submit-probe', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
 
     // ==================== Integrity ====================
     logIntegrity: async (candidateId, eventType, severity, context = null) => {

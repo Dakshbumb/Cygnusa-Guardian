@@ -522,6 +522,79 @@ Respond with ONLY the JSON, no additional text."""
         }
 
 
+class ShadowProctorEngine:
+    """
+    The AI "Shadow" Deep-Probing engine.
+    Analyzes submitted code and generates a targeted follow-up question
+    to test the candidate's actual depth vs. memorization.
+    """
+    
+    def __init__(self, api_key: Optional[str] = None):
+        key = api_key or os.getenv('GEMINI_API_KEY')
+        self.enabled = False
+        if HAS_GEMINI and key:
+            genai.configure(api_key=key)
+            self.model = genai.GenerativeModel('gemini-pro')
+            self.enabled = True
+        else:
+            logger.warning("Shadow Proctor disabled: Missing Gemini API key.")
+
+    def generate_probe(self, question_title: str, question_desc: str, code: str) -> dict:
+        """
+        Generate a targeted follow-up question based on the code implementation.
+        """
+        if not self.enabled:
+            return {
+                "question": "Can you explain your approach to this problem and any trade-offs you made?",
+                "context": "General explanation requested (AI Probe Offline)"
+            }
+
+        prompt = f"""You are a senior technical interviewer. A candidate just submitted code for the following problem:
+
+PROBLEM TITLE: {question_title}
+PROBLEM DESCRIPTION: {question_desc}
+
+CANDIDATE CODE:
+```python
+{code}
+```
+
+YOUR TASK:
+Analyze the code for specific implementation choices (e.g., choice of algorithm, data structure, edge case handling, or potential bottlenecks). 
+
+Generate EXACTLY ONE targeted, short, and challenging follow-up question that forces the candidate to explain WHY they chose a specific part of their implementation. 
+
+Requirements:
+1. Don't ask "How does this code work?"
+2. Ask about a SPECIFIC line or choice (e.g., "Why did you choose a hash map here instead of a sorted list?", or "How would your logic handle a null input in the second loop?")
+3. The question should be difficult to answer if the code was simply copied.
+
+Respond with ONLY a JSON object:
+{{
+    "question": "The question text",
+    "target_concept": "The technical concept you are probing"
+}}
+"""
+        try:
+            response = self.model.generate_content(prompt, generation_config={'temperature': 0.7})
+            text = response.text.strip()
+            
+            # Clean markdown code blocks
+            if text.startswith('```'):
+                lines = text.split('\n')
+                text = '\n'.join(lines[1:-1] if lines[-1] == '```' else lines[1:])
+            if text.startswith('json'):
+                text = text[4:].strip()
+                
+            return json.loads(text)
+        except Exception as e:
+            logger.error(f"Shadow Probe generation failed: {e}")
+            return {
+                "question": "Explain the time and space complexity of your specific implementation.",
+                "target_concept": "Big O Complexity"
+            }
+
+
 # Demo function
 def demo_decision():
     """Demo the decision engine"""

@@ -96,6 +96,8 @@ os.makedirs("snapshots", exist_ok=True)  # For video proctoring snapshots
 db = Database()
 code_sandbox = CodeSandbox()
 decision_engine = ExplainableDecisionEngine(use_gemini=True)
+from decision_engine import ShadowProctorEngine
+shadow_proctor = ShadowProctorEngine()
 resume_validator = ResumeValidator()
 
 # In-memory cache for active sessions (for faster access)
@@ -133,6 +135,27 @@ if SUPABASE_URL and SUPABASE_KEY:
             logger.info("Supabase client initialized with fallback")
         except Exception as e2:
             logger.error(f"Critical Supabase failure: {e2}")
+
+
+def add_decision_node(candidate_id: str, node_type: str, title: str, description: str, impact: str = "neutral", evidence_id: str = None, predicted_rank: float = None):
+    """Utility to record a decision node for the forensic timeline"""
+    from models import DecisionNode
+    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+    if candidate:
+        node = DecisionNode(
+            node_type=node_type,
+            title=title,
+            description=description,
+            impact=impact,
+            evidence_id=evidence_id,
+            predicted_rank=predicted_rank
+        )
+        if candidate.decision_nodes is None:
+            candidate.decision_nodes = []
+        candidate.decision_nodes.append(node)
+        db.save_candidate(candidate)
+        active_sessions[candidate_id] = candidate
+        logger.info(f"Recorded Decision Node: {title} for {candidate_id}")
 
 
 
@@ -462,6 +485,17 @@ async def analyze_resume_full(
     # Step 6: Save candidate with evidence
     candidate.resume_path = file_path
     candidate.resume_evidence = evidence
+    
+    # Record Decision Node
+    add_decision_node(
+        candidate_id=candidate_id,
+        node_type="RESUME",
+        title="Resume Analysis Baseline",
+        description=f"Initial match score established at {evidence.match_score:.1f}%. {evidence.reasoning[:100]}...",
+        impact="positive" if evidence.match_score >= 60 else "neutral" if evidence.match_score >= 30 else "negative",
+        predicted_rank=evidence.match_score
+    )
+    
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
     
@@ -759,12 +793,19 @@ async def submit_code(
     evidence.time_submitted = time_submitted
     evidence.duration_seconds = duration_seconds
     
-    # Update candidate
-    if candidate.code_evidence is None:
-        candidate.code_evidence = []
-    candidate.code_evidence.append(evidence)
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
+    
+    # Record Decision Node for code submission
+    add_decision_node(
+        candidate_id=candidate_id,
+        node_type="CODE",
+        title=f"Code Verified: {question_data['title']}",
+        description=f"Automated test pass rate: {evidence.pass_rate:.1f}%. Duration: {duration_seconds}s.",
+        impact="positive" if evidence.pass_rate >= 70 else "neutral" if evidence.pass_rate >= 40 else "negative",
+        evidence_id=question_id,
+        predicted_rank=evidence.pass_rate
+    )
     
     return {
         "success": True,
@@ -774,6 +815,82 @@ async def submit_code(
             "total_tests": evidence.total_tests,
             "avg_time_ms": evidence.avg_time_ms
         }
+    }
+
+
+@app.post("/api/assessment/probe")
+async def generate_shadow_probe(
+    candidate_id: str = Form(...),
+    question_id: str = Form(...),
+    code: str = Form(...)
+):
+    """
+    Step 1 of Shadow Probing: Analyze code and generate a targeted follow-up.
+    """
+    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    # Find question metadata
+    question_key = question_id.split('_', 1)[1] if '_' in question_id else question_id
+    question_data = DEMO_QUESTIONS.get(question_key)
+    
+    if not question_data:
+        # Fallback question if metadata missing
+        return {
+            "shadow_probe": {
+                "question": "Tell us about the complexity of your approach.",
+                "target_concept": "General Implementation"
+            }
+        }
+        
+    # Generate probe using AI
+    probe = shadow_proctor.generate_probe(
+        question_title=question_data["title"],
+        question_desc=question_data["description"],
+        code=code
+    )
+    
+    return {
+        "success": True,
+        "shadow_probe": probe
+    }
+
+
+@app.post("/api/assessment/submit-probe")
+async def submit_shadow_probe(
+    candidate_id: str = Form(...),
+    question_id: str = Form(...),
+    probe_question: str = Form(...),
+    answer: str = Form(...),
+    target_concept: str = Form(default="General")
+):
+    """
+    Step 2 of Shadow Probing: Save the candidate's response to the probe.
+    """
+    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+        
+    # Create evidence for text answer
+    probe_evidence = TextAnswerEvidence(
+        question_id=f"probe_{question_id}",
+        question_text=probe_question,
+        answer_text=answer,
+        competency=f"Deep Probe: {target_concept}",
+        sentiment_score=0.5 # Neutral placeholder
+    )
+    
+    if candidate.text_evidence is None:
+        candidate.text_evidence = []
+    candidate.text_evidence.append(probe_evidence)
+    
+    db.save_candidate(candidate)
+    active_sessions[candidate_id] = candidate
+    
+    return {
+        "success": True,
+        "message": "Shadow probe response captured"
     }
 
 
@@ -811,6 +928,10 @@ async def submit_mcq(
     candidate.mcq_evidence.append(evidence)
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
+    
+    # Forensic Milestone: Scenarios
+    if len(candidate.mcq_evidence) == 1:
+        add_decision_node(candidate_id, "MCQ", "Scenario Logic Initialized", "Behavioral logic and scenario-based reasoning assessment started.", "neutral")
     
     return {
         "success": True,
@@ -854,6 +975,15 @@ async def submit_psychometric(
     candidate.psychometric_evidence = evidence
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
+    
+    # Record Decision Node for Psychometric
+    add_decision_node(
+        candidate_id=candidate_id,
+        node_type="PSYCH",
+        title="Psychometric Calibration",
+        description=f"Candidate self-assessment complete. {len(strong_areas)} strengths and {len(weak_areas)} weak areas identified.",
+        impact="positive" if len(strong_areas) > len(weak_areas) else "neutral"
+    )
     
     return {
         "success": True,
@@ -910,6 +1040,10 @@ async def submit_text_answer(
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
     
+    # Forensic Checkpoint
+    if not question_id.startswith("probe_"):
+        add_decision_node(candidate_id, "TEXT", f"Reasoning Verified: {competency}", f"Word context established: {word_count} words.", "positive" if word_count > 50 else "neutral")
+    
     return {
         "success": True,
         "evidence": evidence.model_dump()
@@ -938,6 +1072,17 @@ async def log_integrity_event(
     )
     
     db.log_integrity_event(candidate_id, event)
+    
+    # Check for decision node impact on high severity
+    if severity in ["high", "critical"]:
+        add_decision_node(
+            candidate_id=candidate_id,
+            node_type="INTEGRITY",
+            title=f"Forensic Alert: {event_type.replace('_', ' ').title()}",
+            description=f"A {severity} violation was detected. {context}",
+            impact="negative",
+            evidence_id="integrity_violation"
+        )
     
     return {
         "logged": True,
@@ -1122,6 +1267,16 @@ async def generate_report(candidate_id: str):
     candidate.final_decision = decision
     candidate.status = "completed"
     candidate.completed_at = datetime.now().isoformat()
+    
+    # Final Decision Node
+    add_decision_node(
+        candidate_id=candidate_id,
+        node_type="FINAL",
+        title=f"Forensic Verdict: {decision.outcome}",
+        description=f"AI concluded {decision.outcome} with {decision.confidence} confidence. Reasoning: {decision.reasoning[0]}",
+        impact="positive" if decision.outcome == "HIRE" else "neutral" if decision.outcome == "CONDITIONAL" else "negative"
+    )
+    
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
     
