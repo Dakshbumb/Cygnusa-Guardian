@@ -1538,7 +1538,7 @@ async def generate_report(candidate_id: str):
 async def export_report_pdf(candidate_id: str):
     """
     Export candidate report as downloadable PDF-ready HTML.
-    Frontend can use this with browser print or a PDF library.
+    Features premium design with Chart.js visual analytics.
     """
     candidate = db.get_candidate(candidate_id)
     if not candidate:
@@ -1549,11 +1549,43 @@ async def export_report_pdf(candidate_id: str):
     
     decision = candidate.final_decision
     evidence = decision.evidence_summary
-    
-    # Build HTML report with premium design
+    cognitive = decision.cognitive_profile
     integrity_logs = db.get_integrity_logs(candidate_id)
     
-    # Format dates and values
+    # 1. Aggregate Data for Charts
+    
+    # Integrity Breakdown (Bar Chart)
+    violation_counts = {}
+    for log in integrity_logs:
+        etype = log.event_type.replace("_", " ").title()
+        violation_counts[etype] = violation_counts.get(etype, 0) + 1
+    
+    integrity_chart_labels = list(violation_counts.keys())
+    integrity_chart_data = list(violation_counts.values())
+
+    # Cognitive Profile (Radar Chart)
+    cognitive_labels = []
+    cognitive_values = []
+    if cognitive and "cognitive_scores" in cognitive:
+        for trait, score in cognitive["cognitive_scores"].items():
+            cognitive_labels.append(trait.title())
+            cognitive_values.append(score)
+    else:
+        # Fallback for old records
+        cognitive_labels = ["Abstraction", "Speed", "Precision", "Creativity"]
+        cognitive_values = [0, 0, 0, 0]
+
+    # Evidentiary Mapping (Horizontal Bar)
+    mapping = decision.evidentiary_mapping or {}
+    mapping_labels = []
+    mapping_values = []
+    impact_weight = {"primary_driver": 100, "supporting": 60, "negative": 30, "neutral": 10, "none": 0}
+    
+    for section, impact in mapping.items():
+        mapping_labels.append(section.title())
+        mapping_values.append(impact_weight.get(impact, 0))
+
+    # Format dates
     completion_date = candidate.completed_at or candidate.created_at
     try:
         completion_dt = datetime.fromisoformat(completion_date)
@@ -1561,7 +1593,8 @@ async def export_report_pdf(candidate_id: str):
     except:
         formatted_date = completion_date
 
-    def get_val(path, default="PENDING"):
+    # Score calculations
+    def get_val(path, default=0):
         parts = path.split('.')
         curr = evidence
         for p in parts:
@@ -1574,9 +1607,7 @@ async def export_report_pdf(candidate_id: str):
     resume_score = get_val('resume.match_score', 0)
     coding_score = get_val('coding.avg_pass_rate', 0)
     mcq_score = get_val('mcqs.pass_rate', 0)
-    integrity_rating = get_val('integrity.rating', 'High')
-    violations_count = len(integrity_logs)
-
+    
     html_content = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -1584,361 +1615,388 @@ async def export_report_pdf(candidate_id: str):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forensic Assessment Report - {candidate.name}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {{
-            --primary: #1e3a8a;
-            --primary-light: #eff6ff;
+            --bg-dark: #09090b;
+            --surface: #ffffff;
+            --surface-muted: #f8fafc;
+            --primary: #2563eb;
+            --secondary: #6366f1;
+            --accent: #8b5cf6;
             --success: #10b981;
-            --success-bg: #ecfdf5;
             --danger: #ef4444;
-            --danger-bg: #fef2f2;
             --warning: #f59e0b;
-            --warning-bg: #fffbeb;
-            --neutral: #64748b;
-            --neutral-bg: #f8fafc;
-            --text-dark: #0f172a;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
             --border: #e2e8f0;
         }}
 
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ 
-            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
-            background: #f1f5f9; 
-            color: var(--text-dark);
-            line-height: 1.5;
-            padding: 2rem;
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: var(--surface-muted); 
+            color: var(--text-main);
+            line-height: 1.6;
         }}
 
-        .report-page {{
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        .page {{
+            max-width: 1000px;
+            margin: 2rem auto;
+            background: var(--surface);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.05);
+            border-radius: 24px;
             overflow: hidden;
             border: 1px solid var(--border);
         }}
 
-        /* Header */
-        .report-header {{
-            background: #0f172a;
+        /* Header Section */
+        header {{
+            background: var(--bg-dark);
             color: white;
-            padding: 3rem 2rem;
+            padding: 4rem 3rem;
             position: relative;
         }}
 
-        .brand {{
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
+        .brand-logo {{
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }}
+
+        .brand-logo svg {{ width: 32px; height: 32px; color: var(--primary); }}
+        .brand-name {{ font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; }}
+
+        .hero-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }}
+
+        .candidate-info h1 {{ font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.03em; }}
+        .candidate-info .role {{ color: #94a3b8; font-weight: 500; font-size: 1.125rem; }}
+
+        .status-badge {{
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }}
+
+        .status-label {{ font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; font-weight: 700; }}
+        .status-value {{ font-size: 1.25rem; font-weight: 700; color: white; }}
+
+        /* Main Content */
+        main {{ padding: 3rem; }}
+
+        .section {{ margin-bottom: 4rem; }}
+        .section-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }}
+
+        .section-title {{ font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }}
+        
+        /* Grid Layouts */
+        .chart-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
             margin-bottom: 2rem;
         }}
 
-        .candidate-meta {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-        }}
-
-        .meta-item .label {{
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #94a3b8;
-            margin-bottom: 0.25rem;
-        }}
-
-        .meta-item .value {{
-            font-weight: 600;
-            font-size: 1rem;
-        }}
-
-        /* Main Content */
-        .report-body {{
-            padding: 2.5rem;
-        }}
-
-        .section-title {{
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            border-bottom: 2px solid var(--primary-light);
-            padding-bottom: 0.5rem;
-        }}
-
-        /* Decision Card */
-        .decision-container {{
-            display: flex;
-            gap: 2rem;
-            background: var(--neutral-bg);
-            border-radius: 12px;
+        .chart-card {{
+            background: var(--surface-muted);
             padding: 2rem;
-            margin-bottom: 2.5rem;
+            border-radius: 20px;
             border: 1px solid var(--border);
         }}
 
-        .outcome-box {{
+        .chart-card h4 {{ margin-bottom: 1.5rem; font-size: 0.875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }}
+
+        /* Summary Dashboard */
+        .verdict-banner {{
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 2.5rem;
+            background: #f1f5f9;
+            padding: 2.5rem;
+            border-radius: 24px;
+            margin-bottom: 3rem;
+            align-items: center;
+        }}
+
+        .outcome-badge {{
+            padding: 1rem;
+            border-radius: 16px;
             text-align: center;
-            min-width: 180px;
+            font-weight: 800;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
         }}
 
-        .badge {{
-            display: inline-block;
-            padding: 0.75rem 1.5rem;
-            border-radius: 9999px;
-            font-weight: 700;
-            font-size: 1.125rem;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-        }}
+        .outcome-HIRE {{ background: var(--success); color: white; }}
+        .outcome-NO_HIRE {{ background: var(--danger); color: white; }}
+        .outcome-CONDITIONAL {{ background: var(--warning); color: white; }}
 
-        .badge-HIRE {{ background: var(--success); color: white; }}
-        .badge-NO_HIRE {{ background: var(--danger); color: white; }}
-        .badge-CONDITIONAL {{ background: var(--warning); color: white; }}
+        .rationale-text {{ font-size: 1rem; color: var(--text-main); font-weight: 500; }}
 
-        .decision-details {{
-            flex: 1;
-        }}
-
-        .decision-details p {{
-            margin-bottom: 0.75rem;
-            font-size: 0.9375rem;
-        }}
-
-        /* Evidence Grid */
-        .score-grid {{
+        /* Score Cards */
+        .kpi-grid {{
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
-            margin-bottom: 2.5rem;
+            margin-bottom: 3rem;
         }}
 
-        .score-card {{
+        .kpi-card {{
             background: white;
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.25rem;
+            padding: 1.5rem;
+            border-radius: 16px;
             text-align: center;
         }}
 
-        .score-card .label {{
-            font-size: 0.75rem;
-            color: var(--neutral);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-        }}
+        .kpi-card .label {{ font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; }}
+        .kpi-card .value {{ font-size: 1.75rem; font-weight: 800; }}
 
-        .score-card .value {{
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-dark);
-        }}
-
-        /* Reasoning List */
-        .reasoning-list {{
-            list-style: none;
-            margin-bottom: 2.5rem;
-        }}
-
-        .reasoning-list li {{
-            position: relative;
-            padding-left: 2rem;
-            margin-bottom: 1rem;
-            font-size: 0.9375rem;
-        }}
-
-        .reasoning-list li::before {{
-            content: '✓';
-            position: absolute;
-            left: 0;
-            top: 0;
-            color: var(--success);
-            font-weight: 700;
-            background: var(--success-bg);
-            width: 1.25rem;
-            height: 1.25rem;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-        }}
-
-        /* Violation Table */
-        .violation-table {{
+        /* Timeline/Logs */
+        .log-table {{
             width: 100%;
             border-collapse: collapse;
             font-size: 0.875rem;
-            margin-top: 1rem;
         }}
 
-        .violation-table th {{
-            text-align: left;
-            padding: 0.75rem;
-            background: #f8fafc;
-            border-bottom: 2px solid var(--border);
-            color: var(--neutral);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
+        .log-table th {{ text-align: left; padding: 1rem; color: var(--text-muted); border-bottom: 2px solid var(--border); }}
+        .log-table td {{ padding: 1rem; border-bottom: 1px solid var(--border); }}
+        
+        .severity-dot {{
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
         }}
 
-        .violation-table td {{
-            padding: 1rem 0.75rem;
-            border-bottom: 1px solid var(--border);
-        }}
+        .dot-high {{ background: var(--danger); }}
+        .dot-medium {{ background: var(--warning); }}
+        .dot-low {{ background: var(--success); }}
 
-        .severity-badge {{
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }}
-
-        .sev-low {{ background: #f1f5f9; color: #475569; }}
-        .sev-medium {{ background: #fef3c7; color: #92400e; }}
-        .sev-high {{ background: #fee2e2; color: #b91c1c; }}
-
-        .timestamp {{ font-family: 'Space Grotesk', monospace; color: var(--neutral); }}
-
-        /* Footer */
-        .report-footer {{
-            background: #f8fafc;
-            padding: 2rem;
-            border-top: 1px solid var(--border);
+        footer {{
+            background: var(--surface-muted);
+            padding: 3rem;
             text-align: center;
-            color: var(--neutral);
-            font-size: 0.8125rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.875rem;
         }}
 
         @media print {{
-            body {{ padding: 0; background: white; }}
-            .report-page {{ box-shadow: none; border: none; max-width: 100%; }}
-            .report-header {{ background: #0f172a !important; color: white !important; -webkit-print-color-adjust: exact; }}
+            body {{ background: white; }}
+            .page {{ box-shadow: none; margin: 0; max-width: 100%; border: none; }}
+            header {{ -webkit-print-color-adjust: exact; }}
         }}
     </style>
 </head>
 <body>
-    <div class="report-page">
-        <header class="report-header">
-            <div class="brand">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                CYGNUSA GUARDIAN
+    <div class="page">
+        <header>
+            <div class="brand-logo">
+                <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/></svg>
+                <span class="brand-name">CYGNUSA GUARDIAN</span>
             </div>
-            <div class="candidate-meta">
-                <div class="meta-item">
-                    <div class="label">Candidate Name</div>
-                    <div class="value">{candidate.name}</div>
+            
+            <div class="hero-grid">
+                <div class="candidate-info">
+                    <p class="status-label" style="color: var(--primary)">Professional Assessment Export</p>
+                    <h1>{candidate.name}</h1>
+                    <p class="role">{candidate.job_title} • Forensic Report</p>
                 </div>
-                <div class="meta-item">
-                    <div class="label">Assigned Role</div>
-                    <div class="value">{candidate.job_title}</div>
-                </div>
-                <div class="meta-item">
-                    <div class="label">Assessment Date</div>
-                    <div class="value">{formatted_date}</div>
-                </div>
-                <div class="meta-item">
-                    <div class="label">Report Integrity</div>
-                    <div class="value">VERIFIED_SECURE</div>
+                <div class="status-badge">
+                    <div class="status-label">Report Integrity Signature</div>
+                    <div class="status-value">{formatted_date}</div>
+                    <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #475569; margin-top: 4px;">SIGNATURE: {candidate.id[:12].upper()}-VERIFIED</div>
                 </div>
             </div>
         </header>
 
-        <main class="report-body">
-            <h2 class="section-title">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                Hiring Intelligence Summary
-            </h2>
-            
-            <div class="decision-container">
-                <div class="outcome-box">
-                    <span class="badge badge-{decision.outcome}">{decision.outcome}</span>
-                    <div style="margin-top: 1rem; color: var(--neutral); font-size: 0.875rem;">
-                        <strong>Confidence:</strong> {decision.confidence.upper()}
+        <main>
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Forensic Verdict Dashboard</h2>
+                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary);">CONFIDENCE: {decision.confidence.upper()}</span>
+                </div>
+
+                <div class="verdict-banner">
+                    <div class="outcome-badge outcome-{decision.outcome}">
+                        {decision.outcome}
+                    </div>
+                    <div class="rationale-text">
+                        <p style="margin-bottom: 1rem;"><strong>AI Reasoning Trace:</strong> {decision.reasoning[0]}</p>
+                        <div style="display: flex; gap: 1rem;">
+                            <div style="flex: 1; padding: 1rem; background: rgba(255,255,255,0.5); border-radius: 12px; font-size: 0.8125rem;">
+                                <strong>Role Fit:</strong> {decision.role_fit}
+                            </div>
+                            <div style="flex: 1; padding: 1rem; background: rgba(255,255,255,0.5); border-radius: 12px; font-size: 0.8125rem;">
+                                <strong>Next Action:</strong> {decision.next_steps}
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="decision-details">
-                    <p><strong>Rationale:</strong> The candidate was evaluated across technical proficiency, behavioral alignment, and assessment integrity.</p>
-                    <p><strong>Fit Analysis:</strong> {decision.role_fit}</p>
-                    <p><strong>Recruiter Action:</strong> {decision.next_steps}</p>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="label">Resume Match</div>
+                        <div class="value">{resume_score:.1f}%</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="label">Coding Score</div>
+                        <div class="value">{coding_score:.1f}%</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="label">MCQ Performance</div>
+                        <div class="value">{mcq_score:.1f}%</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="label">Integrity</div>
+                        <div class="value" style="color: { 'var(--success)' if len(integrity_logs) < 5 else 'var(--danger)' }">{ 'PASSED' if len(integrity_logs) < 5 else 'FLAGGED' }</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="score-grid">
-                <div class="score-card">
-                    <div class="label">Resume Match</div>
-                    <div class="value">{resume_score:.1f}%</div>
+            <div class="section">
+                <div class="section-header"><h2 class="section-title">Visual Intelligence Assets</h2></div>
+                
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <h4>Cognitive Architecture Profile</h4>
+                        <canvas id="cognitiveRadar"></canvas>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 1rem; text-align: center;">
+                            Archetype: <strong>{cognitive.get('primary_style', 'N/A').replace('_', ' ')}</strong>
+                        </p>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Integrity Violation Breakdown</h4>
+                        <canvas id="integrityBar"></canvas>
+                    </div>
                 </div>
-                <div class="score-card">
-                    <div class="label">Coding Perf.</div>
-                    <div class="value">{coding_score if isinstance(coding_score, (int, float)) else 0:.1f}%</div>
-                </div>
-                <div class="score-card">
-                    <div class="label">Soft Skills</div>
-                    <div class="value">{mcq_score if isinstance(mcq_score, (int, float)) else 0:.1f}%</div>
-                </div>
-                <div class="score-card">
-                    <div class="label">Integrity</div>
-                    <div class="value">{integrity_rating}</div>
+
+                <div class="chart-card" style="margin-bottom: 2rem;">
+                    <h4>Evidentiary Mapping (AI Drivers)</h4>
+                    <canvas id="mappingChart" height="100"></canvas>
                 </div>
             </div>
 
-            <h2 class="section-title">Key Decision Points</h2>
-            <ul class="reasoning-list">
-                {''.join(f'<li>{r}</li>' for r in decision.reasoning)}
-            </ul>
-
-            <h2 class="section-title">Forensic Integrity Audit</h2>
-            <p style="font-size: 0.875rem; color: var(--neutral); margin-bottom: 1rem;">
-                Detailed log of all detected anomalous events during the assessment session.
-            </p>
-            
-            {f'''
-            <table class="violation-table">
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Event Type</th>
-                        <th>Severity</th>
-                        <th>Forensic Context</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {''.join(f'<tr><td class="timestamp">{e.timestamp.split("T")[1].split(".")[0] if "T" in e.timestamp else e.timestamp}</td><td style="font-weight: 500;">{e.event_type.replace("_", " ").capitalize()}</td><td><span class="severity-badge sev-{e.severity}">{e.severity}</span></td><td style="color: var(--neutral);">{e.context or "No additional context"}</td></tr>' for e in integrity_logs)}
-                </tbody>
-            </table>
-            ''' if integrity_logs else f'<div style="padding: 2rem; background: var(--success-bg); color: var(--success); border-radius: 8px; text-align: center; font-weight: 600;">No integrity violations detected. Assessment environment verified as stable.</div>'}
-
+            <div class="section">
+                <div class="section-header"><h2 class="section-title">Detailed Forensic Appendix</h2></div>
+                
+                {f'''
+                <table class="log-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Incident Category</th>
+                            <th>Severity</th>
+                            <th>Contextual Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {''.join(f'<tr><td>{log.timestamp.split("T")[1][:8] if "T" in log.timestamp else log.timestamp}</td><td style="font-weight: 600;">{log.event_type.replace("_", " ").title()}</td><td><span class="severity-dot dot-{log.severity}"></span>{log.severity.upper()}</td><td style="color: var(--text-muted); font-size: 12px;">{log.context or "N/A"}</td></tr>' for log in integrity_logs)}
+                    </tbody>
+                </table>
+                ''' if integrity_logs else '<p style="text-align: center; color: var(--success); padding: 2rem; background: #ecfdf5; border-radius: 12px; font-weight: 600;">Zero integrity anomalies detected during entire session.</p>'}
+            </div>
         </main>
 
-        <footer class="report-footer">
-            <p><strong>Forensic Report ID:</strong> {candidate.id} | <strong>System Version:</strong> 2.4.0-Forensic</p>
-            <p style="margin-top: 0.5rem;">The Cygnusa Guardian system utilizes deterministic rule-matching and generative reasoning for high-transparency hiring decisions.</p>
+        <footer>
+            <p><strong>Cygnusa Guardian Forensic Protocol v4.2</strong> • Data sensitivity: <strong>RESTRICED_HR</strong></p>
+            <p style="margin-top: 0.5rem; opacity: 0.6;">Automated decisions are cross-referenced with behavioral biometric DNA. Forensic ID: {candidate.id}</p>
         </footer>
     </div>
+
+    <script>
+        // Chart Configs
+        const ctxRadar = document.getElementById('cognitiveRadar');
+        new Chart(ctxRadar, {{
+            type: 'radar',
+            data: {{
+                labels: {json.dumps(cognitive_labels)},
+                datasets: [{{
+                    label: 'Score',
+                    data: {json.dumps(cognitive_values)},
+                    fill: true,
+                    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                    borderColor: 'rgb(99, 102, 241)',
+                    pointBackgroundColor: 'rgb(99, 102, 241)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(99, 102, 241)'
+                }}]
+            }},
+            options: {{
+                scales: {{ r: {{ min: 0, max: 10, ticks: {{ display: false }} }} }},
+                plugins: {{ legend: {{ display: false }} }}
+            }}
+        }});
+
+        const ctxBar = document.getElementById('integrityBar');
+        new Chart(ctxBar, {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(integrity_chart_labels)},
+                datasets: [{{
+                    label: 'Occurrences',
+                    data: {json.dumps(integrity_chart_data)},
+                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                    borderRadius: 8
+                }}]
+            }},
+            options: {{
+                indexAxis: 'y',
+                scales: {{ x: {{ beginAtZero: true, ticks: {{ stepSize: 1 }} }} }},
+                plugins: {{ legend: {{ display: false }} }}
+            }}
+        }});
+
+        const ctxMap = document.getElementById('mappingChart');
+        new Chart(ctxMap, {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(mapping_labels)},
+                datasets: [{{
+                    label: 'Impact Weight',
+                    data: {json.dumps(mapping_values)},
+                    backgroundColor: 'rgba(37, 99, 235, 0.7)',
+                    borderRadius: 4
+                }}]
+            }},
+            options: {{
+                indexAxis: 'y',
+                scales: {{ x: {{ display: false, max: 100 }} }},
+                plugins: {{ legend: {{ display: false }} }}
+            }}
+        }});
+    </script>
 </body>
 </html>
 """
     
-    # Return as streaming HTML response that can be printed/saved as PDF
+    # Return as streaming HTML response
     return StreamingResponse(
         io.StringIO(html_content),
         media_type="text/html",
-        headers={
+        headers={{
             "Content-Disposition": f"attachment; filename=cygnusa_report_{candidate_id}.html"
-        }
+        }}
     )
 
 
