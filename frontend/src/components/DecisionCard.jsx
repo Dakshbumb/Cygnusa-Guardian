@@ -280,10 +280,10 @@ export function DecisionCard({ candidateId, decision, candidate, evidence }) {
                                     </div>
                                 </div>
 
-                                <div className="p-4 bg-primary-900/10 border border-primary-500/20 rounded-xl w-full md:w-72 space-y-3">
-                                    <div className="flex items-center gap-2 text-[10px] font-bold text-primary-400 uppercase font-mono">
-                                        <Shield size={12} />
-                                        Enterprise_Team_Gap_Fit
+                                <div className="p-4 bg-primary-900/10 border border-primary-500/20 rounded-xl w-full md:w-72 space-y-3 self-start">
+                                    <div className="flex items-center gap-2">
+                                        <Shield size={14} className="text-primary-400 flex-shrink-0" />
+                                        <span className="text-[10px] font-bold text-primary-400 uppercase font-mono">Enterprise_Team_Gap_Fit</span>
                                     </div>
                                     <p className="text-xs text-neutral-300 leading-relaxed">
                                         {decision.cognitive_profile.team_gap_fit}
