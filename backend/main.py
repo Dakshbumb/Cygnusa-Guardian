@@ -1588,8 +1588,8 @@ async def export_report_pdf(candidate_id: str):
         raise HTTPException(status_code=400, detail="Report not yet generated")
     
     decision = candidate.final_decision
-    evidence = decision.evidence_summary
-    cognitive = decision.cognitive_profile
+    evidence = decision.evidence_summary or {}
+    cognitive = decision.cognitive_profile or {}
     integrity_logs = db.get_integrity_logs(candidate_id)
     
     # 1. Aggregate Data for Charts
