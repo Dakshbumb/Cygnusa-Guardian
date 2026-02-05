@@ -29,14 +29,18 @@ export function Header() {
             {/* Logo & Brand */}
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-800 rounded-lg flex items-center justify-center border border-primary-500/50 shadow-lg shadow-primary-900/50">
-                        <Shield size={20} className="text-white" />
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-primary-500/30 shadow-lg shadow-primary-900/40">
+                        <img
+                            src="/logo.jpg"
+                            alt="Logo"
+                            className="w-full h-full object-cover"
+                        />
                     </div>
                     <div>
-                        <h1 className="text-lg font-display font-bold text-white">
+                        <h1 className="text-lg font-display font-bold text-white leading-none mb-1">
                             Cygnusa Guardian
                         </h1>
-                        <p className="text-xs text-neutral-500">Glass-Box Hiring</p>
+                        <p className="text-[10px] text-neutral-500 font-medium uppercase tracking-wider">Built for the Future</p>
                     </div>
                 </div>
 

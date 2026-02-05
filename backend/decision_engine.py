@@ -86,8 +86,9 @@ class ExplainableDecisionEngine:
         if auto_decision:
             decision_data = auto_decision
             model_used = "deterministic_rules"
-            prompt = "Auto-decision triggered by rule engine"
-            raw_response = json.dumps(auto_decision)
+            # Transparently show the evidence state that triggered the rule
+            prompt = f"RULE_ENGINE_EXECUTION\n\nPrimary Rule Triggered: {decision_data.get('reasoning', ['Unknown rule'])[0]}\n\nFull Evidence Context Snapshot:\n{json.dumps(evidence_summary, indent=2)}"
+            raw_response = json.dumps(auto_decision, indent=2)
         else:
             # Build transparent prompt
             prompt = self._build_decision_prompt(candidate_name, evidence_summary)
@@ -193,7 +194,8 @@ class ExplainableDecisionEngine:
                         'question': e.question_title or e.question_id,
                         'pass_rate': e.pass_rate,
                         'time_ms': e.avg_time_ms,
-                        'duration_seconds': e.duration_seconds
+                        'duration_seconds': e.duration_seconds,
+                        'test_cases': [tc.model_dump() for tc in e.test_cases] if e.test_cases else []
                     }
                     for e in code_evidence
                 ]

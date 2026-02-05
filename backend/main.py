@@ -350,10 +350,10 @@ async def validate_resume_only(file: UploadFile = File(...)):
 
 @app.post("/api/resume/analyze")
 async def analyze_resume_full(
-    name: str = Form(default="Candidate"),
-    email: str = Form(default="candidate@example.com"),
+    candidate_name: str = Form(default="Candidate Subject"),
+    candidate_email: str = Form(default="subject@cygnusa.internal"),
     job_title: str = Form(default="Software Engineer"),
-    jd_skills: str = Form(default="python,javascript,react"),
+    jd_skills: str = Form(default="python,javascript,react,nodejs,postgresql,docker,git,typescript"),
     critical_skills: str = Form(default=""),
     file: UploadFile = File(...)
 ):
@@ -377,8 +377,8 @@ async def analyze_resume_full(
     candidate_id = f"c_{uuid.uuid4().hex[:8]}"
     candidate = CandidateProfile(
         id=candidate_id,
-        name=name,
-        email=email,
+        name=candidate_name,
+        email=candidate_email,
         job_title=job_title,
         status="resume_uploaded"
     )
@@ -455,7 +455,7 @@ async def analyze_resume_full(
     return {
         "success": True,
         "candidate_id": candidate_id,
-        "name": name,
+        "name": candidate_name,
         "rank": rank,
         "justification": justification,
         "evidence": {

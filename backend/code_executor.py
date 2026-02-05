@@ -31,7 +31,7 @@ class CodeSandbox:
     BANNED_IMPORTS = [
         'os', 'subprocess', 'sys', 'socket', 'requests', 
         'urllib', 'http', 'ftplib', 'smtplib', 'telnetlib',
-        'pickle', 'marshal', 'shelve', 'dbm',
+        'pickle', 'marshal', 'shelve', 'dbm', 'shutil', 'tempfile',
         'ctypes', 'multiprocessing', 'threading',
         '__builtins__', 'eval', 'exec', 'compile',
         'importlib', '__import__'

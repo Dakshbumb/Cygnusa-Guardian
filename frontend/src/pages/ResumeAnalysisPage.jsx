@@ -62,16 +62,17 @@ export function ResumeAnalysisPage() {
     return (
         <div className="min-h-screen bg-surface-base flex flex-col">
             <Header />
-            <div className="flex-1 pt-24 px-6">
-                <button
-                    onClick={() => navigate('/')}
-                    className="absolute top-8 left-8 flex items-center gap-2 text-neutral-500 hover:text-white transition-colors"
-                >
-                    <ArrowLeft size={20} />
-                    <span>Back to Command</span>
-                </button>
-
+            <div className="flex-1 px-6 pb-20 pt-8">
                 <div className="max-w-4xl mx-auto">
+                    {/* Back Navigation */}
+                    <button
+                        onClick={() => navigate('/')}
+                        className="mb-12 flex items-center gap-2 text-neutral-500 hover:text-white transition-colors font-mono text-xs uppercase tracking-widest group"
+                    >
+                        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        <span>[ Back to Command ]</span>
+                    </button>
+
                     <div className="text-center mb-12">
                         <h1 className="text-3xl font-display font-bold text-white mb-2">Resume Intelligence Gatekeeper</h1>
                         <p className="text-neutral-400">Forensic analysis and skill verification protocol</p>

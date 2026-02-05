@@ -85,7 +85,7 @@ export function AuditTrail({ auditTrail }) {
                         {activeTab === 'prompt' && (
                             <div>
                                 <p className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">
-                                    // INCOMING_PAYLOAD_TO_NEURAL_ENGINE
+                                    {auditTrail.auto_rules_applied ? '// RULE_ENGINE_CONTEXT_SNAPSHOT' : '// INCOMING_PAYLOAD_TO_NEURAL_ENGINE'}
                                 </p>
                                 <div className="relative group">
                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -101,7 +101,7 @@ export function AuditTrail({ auditTrail }) {
                         {activeTab === 'response' && (
                             <div>
                                 <p className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">
-                                    // RAW_INFERENCE_OUTPUT
+                                    {auditTrail.auto_rules_applied ? '// RULE_ENGINE_DECISION_OBJECT' : '// RAW_INFERENCE_OUTPUT'}
                                 </p>
                                 <pre className="bg-surface-base border border-surface-overlay text-success-400 p-4 rounded text-xs overflow-x-auto max-h-96 font-mono custom-scrollbar">
                                     {formatJson(auditTrail.raw_response)}

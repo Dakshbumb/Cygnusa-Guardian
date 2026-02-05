@@ -88,14 +88,18 @@ export function LoginPage() {
             <div className="w-full max-w-md">
                 {/* Logo/Branding */}
                 <div className="text-center mb-8">
-                    <div className="w-20 h-20 bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary-900/50 border border-primary-500/30">
-                        <Shield size={40} className="text-white" />
+                    <div className="w-24 h-24 mx-auto mb-4 relative overflow-hidden rounded-2xl shadow-2xl shadow-primary-900/50 border border-primary-500/30">
+                        <img
+                            src="/logo.jpg"
+                            alt="Cygnusa Guardian Logo"
+                            className="w-full h-full object-cover"
+                        />
                     </div>
-                    <h1 className="text-3xl font-display font-bold text-white mb-2">
+                    <h1 className="text-4xl font-display font-bold text-white mb-2 tracking-tight">
                         Cygnusa Guardian
                     </h1>
-                    <p className="text-neutral-400">
-                        Glass-Box Hiring Intelligence
+                    <p className="text-neutral-400 font-medium tracking-wide">
+                        Built for the Future of Hiring
                     </p>
                 </div>
 

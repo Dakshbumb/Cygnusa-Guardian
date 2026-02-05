@@ -27,8 +27,10 @@ export function DecisionCard({ candidateId, decision, candidate, evidence }) {
     const handleShare = async () => {
         setShareState({ ...shareState, loading: true });
         try {
-            const response = await api.post(`/candidates/${candidateId}/share`);
-            setShareState({ loading: false, link: response.data.share_url, copied: false });
+            const response = await api.createShareLink(candidateId);
+            // Ensure absolute URL for sharing
+            const absoluteUrl = window.location.origin + response.data.share_url;
+            setShareState({ loading: false, link: absoluteUrl, copied: false });
         } catch (err) {
             console.error("Failed to share report", err);
             setShareState({ ...shareState, loading: false });
@@ -210,9 +212,9 @@ export function DecisionCard({ candidateId, decision, candidate, evidence }) {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${e.severity === 'critical' ? 'bg-danger-900/40 text-danger-400 border border-danger-500/30' :
-                                                        e.severity === 'high' ? 'bg-orange-900/40 text-orange-400 border border-orange-500/30' :
-                                                            e.severity === 'medium' ? 'bg-warning-900/40 text-warning-400 border border-warning-500/30' :
-                                                                'bg-secondary-900/40 text-secondary-400 border border-secondary-500/30'
+                                                    e.severity === 'high' ? 'bg-orange-900/40 text-orange-400 border border-orange-500/30' :
+                                                        e.severity === 'medium' ? 'bg-warning-900/40 text-warning-400 border border-warning-500/30' :
+                                                            'bg-secondary-900/40 text-secondary-400 border border-secondary-500/30'
                                                     }`}>
                                                     {e.severity}
                                                 </span>

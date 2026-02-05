@@ -70,6 +70,23 @@ export function RecruiterDashboard() {
         loadData();
     }, [candidateId]);
 
+    // Polling for real-time snapshots if candidate is in_progress
+    useEffect(() => {
+        if (!candidateId || !candidate || candidate.status !== 'in_progress') return;
+
+        const pollSnapshots = async () => {
+            try {
+                const snapRes = await api.getSnapshots(candidateId);
+                setSnapshots(snapRes.data.snapshots || []);
+            } catch (err) {
+                console.error('Failed to poll snapshots:', err);
+            }
+        };
+
+        const interval = setInterval(pollSnapshots, 10000); // Poll every 10s
+        return () => clearInterval(interval);
+    }, [candidateId, candidate]);
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-surface-base text-neutral-50">
@@ -427,24 +444,32 @@ export function RecruiterDashboard() {
                                     <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">{snapshots.length} Snapshots</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
-                                    {snapshots.slice(0, 4).map((snap, i) => (
-                                        <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-surface-overlay bg-surface-base group">
-                                            <img
-                                                src={`${BASE_URL}/${snap.snapshot_path}`}
-                                                alt={`Proctoring Snapshot ${i}`}
-                                                className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                                            />
-                                            <div className="absolute inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm p-1.5 flex items-center justify-between">
-                                                <span className="text-[8px] font-mono text-neutral-300">
-                                                    {new Date(snap.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                                                </span>
-                                                <span className={`px-1.5 py-0.5 rounded-[2px] text-[7px] font-bold font-mono ${snap.face_detected ? 'bg-success-500/20 text-success-400' : 'bg-danger-500/20 text-danger-400'
-                                                    }`}>
-                                                    {snap.face_detected ? 'FACE_MATCH' : 'NO_FACE'}
-                                                </span>
+                                    {snapshots.slice(0, 4).map((snap, i) => {
+                                        const getImageUrl = (path) => {
+                                            if (!path) return '';
+                                            if (path.startsWith('http')) return path;
+                                            return `${BASE_URL}/${path.startsWith('/') ? path.substring(1) : path}`;
+                                        };
+
+                                        return (
+                                            <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-surface-overlay bg-surface-base group">
+                                                <img
+                                                    src={getImageUrl(snap.snapshot_path)}
+                                                    alt={`Proctoring Snapshot ${i}`}
+                                                    className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                                />
+                                                <div className="absolute inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm p-1.5 flex items-center justify-between">
+                                                    <span className="text-[8px] font-mono text-neutral-300">
+                                                        {snap.timestamp ? new Date(snap.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--'}
+                                                    </span>
+                                                    <span className={`px-1.5 py-0.5 rounded-[2px] text-[7px] font-bold font-mono ${snap.face_detected ? 'bg-success-500/20 text-success-400' : 'bg-danger-500/20 text-danger-400'
+                                                        }`}>
+                                                        {snap.face_detected ? 'FACE_MATCH' : 'NO_FACE'}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 {snapshots.length > 4 && (
                                     <button className="w-full mt-4 py-2 border border-surface-overlay rounded-lg text-[10px] font-mono text-neutral-500 hover:text-white hover:bg-surface-overlay transition-all">
