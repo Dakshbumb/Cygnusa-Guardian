@@ -15,6 +15,7 @@ import os
 import io
 import logging
 import traceback
+import time
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -394,10 +395,17 @@ async def analyze_resume_full(
         status="resume_uploaded"
     )
     
-    # Step 3: Save file
+    # Step 3: Prepare file metadata
     file_name = f"{candidate_id}_{file.filename}"
     file_content = await file.read()
     
+    # Step 4: Save file locally for parsing (even if using Supabase)
+    local_path = f"uploads/{file_name}"
+    with open(local_path, "wb") as f:
+        f.write(file_content)
+        
+    # Step 4b: Supabase upload (Cloud Backup)
+    file_path = local_path # Start with local path
     if supabase:
         try:
             # Upload to Supabase Bucket 'resumes'
@@ -408,19 +416,17 @@ async def analyze_resume_full(
             )
             # Get public URL
             file_url = supabase.storage.from_("resumes").get_public_url(file_name)
-            file_path = file_url
+            file_path = file_url # Use URL for the database record
             logger.info(f"Resume uploaded to Supabase: {file_url}")
         except Exception as e:
-            logger.error(f"Supabase upload failed: {e}. Falling back to local.")
-            file_path = f"uploads/{file_name}"
-            with open(file_path, "wb") as f:
-                f.write(file_content)
-    else:
-        file_path = f"uploads/{file_name}"
-        with open(file_path, "wb") as f:
-            f.write(file_content)
+            logger.error(f"Supabase upload failed: {e}. Falling back to local stored at {local_path}")
     
-    # Step 4: Parse and rank
+    # Step 5: Extract text ONCE (O(1) optimization)
+    start_ext = time.time()
+    extracted_text = ResumeGatekeeper.extract_text(local_path)
+    logger.info(f"O(1) Text Extraction completed in {time.time() - start_ext:.4f}s")
+    
+    # Step 6: Parse and rank (primary role)
     skills_list = [s.strip() for s in jd_skills.split(",") if s.strip()]
     critical_list = [s.strip() for s in critical_skills.split(",") if s.strip()]
     
@@ -428,22 +434,20 @@ async def analyze_resume_full(
         jd_skills=skills_list,
         critical_skills=critical_list
     )
-    evidence = gatekeeper.parse_resume(file_path)
+    evidence = gatekeeper.parse_resume(extracted_text=extracted_text)
     rank, justification = gatekeeper.rank_candidate(evidence)
     
-    # Step 5: Load job roles for multi-role matching
+    # Step 7: Load job roles for multi-role matching using the same extracted text
     multi_role_results = []
     try:
         with open("job_roles.json", "r") as f:
             all_roles = json.load(f)
             for role in all_roles:
-                # Skip the primary target role if it's already in the list to avoid redundancy
-                # (Optional logic, but usually good for UX)
                 role_gatekeeper = ResumeGatekeeper(
                     jd_skills=role["required_skills"],
                     critical_skills=role["critical_skills"]
                 )
-                role_evidence = role_gatekeeper.parse_resume(file_path)
+                role_evidence = role_gatekeeper.parse_resume(extracted_text=extracted_text)
                 status, _ = role_gatekeeper.rank_candidate(role_evidence)
                 multi_role_results.append({
                     "id": role["id"],
@@ -524,7 +528,10 @@ async def upload_resume(
         content = await file.read()
         f.write(content)
     
-    # Parse resume with provided skills (primary analysis)
+    # Step 3: Extract text ONCE
+    extracted_text = ResumeGatekeeper.extract_text(file_path)
+    
+    # Step 4: Parse resume with provided skills (primary analysis)
     skills_list = [s.strip() for s in jd_skills.split(",") if s.strip()]
     critical_list = [s.strip() for s in critical_skills.split(",") if s.strip()]
     
@@ -532,10 +539,10 @@ async def upload_resume(
         jd_skills=skills_list,
         critical_skills=critical_list
     )
-    evidence = gatekeeper.parse_resume(file_path)
+    evidence = gatekeeper.parse_resume(extracted_text=extracted_text)
     rank, justification = gatekeeper.rank_candidate(evidence)
     
-    # Load job roles for multi-role matching
+    # Step 5: Load job roles for multi-role matching using optimized text
     multi_role_results = []
     try:
         with open("job_roles.json", "r") as f:
@@ -545,7 +552,7 @@ async def upload_resume(
                     jd_skills=role["required_skills"],
                     critical_skills=role["critical_skills"]
                 )
-                role_evidence = role_gatekeeper.parse_resume(file_path)
+                role_evidence = role_gatekeeper.parse_resume(extracted_text=extracted_text)
                 status, _ = role_gatekeeper.rank_candidate(role_evidence)
                 multi_role_results.append({
                     "role_id": role["id"],

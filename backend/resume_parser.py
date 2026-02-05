@@ -65,13 +65,13 @@ class ResumeGatekeeper:
         skill = skill.lower().strip()
         return self.SKILL_ALIASES.get(skill, skill)
     
-    def parse_resume(self, pdf_path: str) -> ResumeEvidence:
+    def parse_resume(self, pdf_path: Optional[str] = None, extracted_text: Optional[str] = None) -> ResumeEvidence:
         """
         Parse resume and generate evidence.
-        Returns fully traceable evidence object.
+        Accepts either a path to a PDF or pre-extracted text.
         """
-        # Extract text from PDF
-        text = self._extract_text(pdf_path)
+        # Get text (either from path or provided)
+        text = extracted_text if extracted_text else self.extract_text(pdf_path) if pdf_path else ""
         
         # Find matching skills (deterministic matching) with context
         found_skills, skill_context = self._extract_skills_with_context(text)
@@ -107,8 +107,18 @@ class ResumeGatekeeper:
             education=education
         )
     
-    def _extract_text(self, pdf_path: str) -> str:
-        """Extract text from PDF file"""
+    @staticmethod
+    def extract_text(pdf_path: str) -> str:
+        """Standalone text extraction for O(1) caching"""
+        if not pdf_path:
+            return ""
+            
+        # Handle Supabase URLs (must be local for pdfplumber)
+        if pdf_path.startswith("http"):
+             logger.warning(f"Attempting to parse remote URL {pdf_path}. This might fail if not accessible locally.")
+             # In production, we should download this. For now, we assume local file exists in uploads/
+             # or the caller passes the correct local path.
+             
         if HAS_PDFPLUMBER:
             try:
                 with pdfplumber.open(pdf_path) as pdf:
@@ -118,15 +128,18 @@ class ResumeGatekeeper:
                     ])
                 return text.lower()
             except Exception as e:
-                logger.error(f"PDF parsing error: {e}")
+                logger.error(f"PDF parsing error for {pdf_path}: {e}")
                 return ""
         else:
-            # Fallback: try reading as text (for .txt files or testing)
             try:
                 with open(pdf_path, 'r', encoding='utf-8', errors='ignore') as f:
                     return f.read().lower()
             except Exception:
                 return ""
+
+    def _extract_text(self, pdf_path: str) -> str:
+        """Deprecated: Use static extract_text instead"""
+        return self.extract_text(pdf_path)
     
     def _extract_skills_with_context(self, text: str) -> Tuple[List[str], Dict[str, str]]:
         """
