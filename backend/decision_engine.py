@@ -276,6 +276,20 @@ class ExplainableDecisionEngine:
         else:
             text_data = {'total_responses': 0, 'probes_triggered': 0, 'details': []}
             
+        # Integrity summary
+        if integrity_evidence:
+            integrity_data = {
+                'total_violations': integrity_evidence.total_violations,
+                'severity_score': integrity_evidence.severity_score,
+                'trustworthiness': integrity_evidence.trustworthiness_rating,
+                'events': [
+                    {'type': e.event_type, 'severity': e.severity}
+                    for e in integrity_evidence.events[:5]  # Last 5 events
+                ]
+            }
+        else:
+            integrity_data = {'total_violations': 0, 'severity_score': 0, 'trustworthiness': 'High'}
+            
         return {
             'resume': resume_data,
             'coding': coding_data,
