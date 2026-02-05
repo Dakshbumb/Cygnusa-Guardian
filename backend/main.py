@@ -1597,7 +1597,13 @@ async def export_report_pdf(candidate_id: str):
     # Integrity Breakdown (Bar Chart)
     violation_counts = {}
     for log in integrity_logs:
-        etype = log.event_type.replace("_", " ").title()
+        # Support both Pydantic model (log.event_type) and Dict (log['event_type'])
+        try:
+            etype_raw = log.event_type if hasattr(log, 'event_type') else log.get('event_type', 'unknown')
+        except:
+            etype_raw = 'unknown'
+        
+        etype = str(etype_raw).replace("_", " ").title()
         violation_counts[etype] = violation_counts.get(etype, 0) + 1
     
     integrity_chart_labels = list(violation_counts.keys())
@@ -1623,7 +1629,11 @@ async def export_report_pdf(candidate_id: str):
     
     for section, impact in mapping.items():
         mapping_labels.append(section.title())
-        mapping_values.append(impact_weight.get(impact, 0))
+        # Defensive: If impact is a dict (e.g. from AI), extract value or use neutral
+        safe_impact = impact
+        if isinstance(impact, dict):
+            safe_impact = impact.get('impact', 'neutral')
+        mapping_values.append(impact_weight.get(str(safe_impact).lower(), 10))
 
     # Format dates
     completion_date = candidate.completed_at or candidate.created_at

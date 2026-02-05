@@ -299,6 +299,8 @@ class ExplainableDecisionEngine:
                     for e in integrity_evidence.events[:5]  # Last 5 events
                 ]
             }
+        else:
+            integrity_data = {'total_violations': 0, 'severity_score': 0, 'trustworthiness': 'High', 'events': []}
         # Keystroke summary
         if keystroke_evidence:
             keystroke_data = {
@@ -524,6 +526,19 @@ Respond with ONLY the JSON, no additional text."""
             for field in required:
                 if field not in data:
                     raise ValueError(f"Missing field: {field}")
+            
+            # Normalize evidentiary_mapping (Robustness Layer)
+            if 'evidentiary_mapping' in data and isinstance(data['evidentiary_mapping'], dict):
+                norm_mapping = {}
+                valid_impacts = ["primary_driver", "supporting", "negative", "neutral", "none"]
+                for section, impact in data['evidentiary_mapping'].items():
+                    if isinstance(impact, dict):
+                        # AI might return {"impact": "primary_driver", "reason": "..."}
+                        impact_val = impact.get('impact', next(iter(impact.values())) if impact else "neutral")
+                        norm_mapping[section] = str(impact_val).lower()
+                    else:
+                        norm_mapping[section] = str(impact).lower()
+                data['evidentiary_mapping'] = norm_mapping
             
             # Extract optional strategic enhancement fields
             data['conflict_analysis'] = data.get('conflict_analysis', 'No conflicts detected')
