@@ -253,7 +253,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                                 await faceDetection.send({ image: videoRef.current });
                             },
                             width: 320,
-                            height: 240
+                            height: 192
                         });
                         await camera.start();
                         setStatus('monitoring');
@@ -540,8 +540,9 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                                         <canvas
                                             ref={canvasRef}
                                             className="absolute inset-0 z-20 w-full h-48 pointer-events-none"
+                                            style={{ width: '100%', height: '100%' }}
                                             width={320}
-                                            height={240}
+                                            height={192}
                                         />
 
                                         <video
