@@ -12,6 +12,7 @@ import {
     ChevronRight
 } from 'lucide-react';
 import { ShadowProber } from '../components/ShadowProber';
+import { ClaimProber } from '../components/ClaimProber';
 
 /**
  * CandidateFlow - Main assessment page for candidates
@@ -48,8 +49,12 @@ export function CandidateFlow() {
         coding: false,
         text: false,
         mcq: false,
+        claims: false,
         psychometric: false
     });
+
+    // Claim verification state
+    const [showClaimProber, setShowClaimProber] = useState(false);
 
     // Load assessment on mount
     useEffect(() => {
@@ -225,7 +230,8 @@ export function CandidateFlow() {
                 setCurrentQuestionIndex(prev => prev + 1);
             } else {
                 setCompletedSections(prev => ({ ...prev, text: true }));
-                setCurrentSection('psychometric');
+                // Trigger claim verification before psychometric
+                setShowClaimProber(true);
             }
         } catch (err) {
             console.error('Text submission failed:', err);
@@ -317,6 +323,18 @@ export function CandidateFlow() {
                     questionId={activeProbe.questionId}
                     code={activeProbe.code}
                     onComplete={() => setActiveProbe(null)}
+                />
+            )}
+
+            {/* Resume Claim Verification Overlay */}
+            {showClaimProber && (
+                <ClaimProber
+                    candidateId={candidateId}
+                    onComplete={() => {
+                        setShowClaimProber(false);
+                        setCompletedSections(prev => ({ ...prev, claims: true }));
+                        setCurrentSection('psychometric');
+                    }}
                 />
             )}
 
