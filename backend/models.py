@@ -44,22 +44,6 @@ class LoginResponse(BaseModel):
 # ==================== Evidence Models ====================
 
 
-class ResumeEvidence(BaseModel):
-    """Evidence from resume parsing - fully explainable"""
-    skills_extracted: List[str]
-    skill_context: Dict[str, str] = {}  # skill -> snippet/location context
-    jd_required: List[str]
-    match_score: float = Field(ge=0, le=100)
-    match_calculation: Optional[str] = None  # Explanation of %
-    reasoning: str
-    missing_critical: List[str] = []
-    experience_years: Optional[int] = None
-    education: Optional[str] = None
-    # Claim Probing Engine fields
-    suspicious_claims: List["SuspiciousClaim"] = []
-    authenticity_score: Optional["ResumeAuthenticityScore"] = None
-
-
 class SuspiciousClaim(BaseModel):
     """A resume claim flagged for verification"""
     claim_id: str
@@ -80,6 +64,22 @@ class ResumeAuthenticityScore(BaseModel):
     claims_failed: int = 0
     red_flags: List[str] = []
     verification_status: Dict[str, str] = {}  # claim_id -> verified/unverified/suspect
+
+
+class ResumeEvidence(BaseModel):
+    """Evidence from resume parsing - fully explainable"""
+    skills_extracted: List[str]
+    skill_context: Dict[str, str] = {}  # skill -> snippet/location context
+    jd_required: List[str]
+    match_score: float = Field(ge=0, le=100)
+    match_calculation: Optional[str] = None  # Explanation of %
+    reasoning: str
+    missing_critical: List[str] = []
+    experience_years: Optional[int] = None
+    education: Optional[str] = None
+    # Claim Probing Engine fields
+    suspicious_claims: List[SuspiciousClaim] = []
+    authenticity_score: Optional[ResumeAuthenticityScore] = None
 
 
 class TestCaseResult(BaseModel):

@@ -452,76 +452,92 @@ async def analyze_resume_full(
     logger.info(f"O(1) Text Extraction completed in {time.time() - start_ext:.4f}s")
     
     # Step 6: Parse and rank (primary role)
-    skills_list = [s.strip() for s in jd_skills.split(",") if s.strip()]
-    critical_list = [s.strip() for s in critical_skills.split(",") if s.strip()]
-    
-    gatekeeper = ResumeGatekeeper(
-        jd_skills=skills_list,
-        critical_skills=critical_list
-    )
-    evidence = gatekeeper.parse_resume(extracted_text=extracted_text)
-    rank, justification = gatekeeper.rank_candidate(evidence)
-    
-    # Step 7: Load job roles for multi-role matching using the same extracted text
-    multi_role_results = []
     try:
-        with open("job_roles.json", "r") as f:
-            all_roles = json.load(f)
-            for role in all_roles:
-                role_gatekeeper = ResumeGatekeeper(
-                    jd_skills=role["required_skills"],
-                    critical_skills=role["critical_skills"]
-                )
-                role_evidence = role_gatekeeper.parse_resume(extracted_text=extracted_text)
-                status, _ = role_gatekeeper.rank_candidate(role_evidence)
-                multi_role_results.append({
-                    "id": role["id"],
-                    "title": role["title"],
-                    "match_score": role_evidence.match_score,
-                    "status": status,
-                    "reasoning": role_evidence.reasoning
-                })
-    except Exception as e:
-        logger.error(f"Multi-role matching failed in analyze_resume: {e}")
+        logger.info(f"Starting primary analysis for candidate {candidate_id}")
+        skills_list = [s.strip() for s in jd_skills.split(",") if s.strip()]
+        critical_list = [s.strip() for s in critical_skills.split(",") if s.strip()]
+        
+        gatekeeper = ResumeGatekeeper(
+            jd_skills=skills_list,
+            critical_skills=critical_list
+        )
+        evidence = gatekeeper.parse_resume(extracted_text=extracted_text)
+        logger.info(f"Primary analysis complete: Match={evidence.match_score:.1f}%")
+        rank, justification = gatekeeper.rank_candidate(evidence)
+        
+        # Step 7: Load job roles for multi-role matching using the same extracted text
+        multi_role_results = []
+        try:
+            if os.path.exists("job_roles.json"):
+                with open("job_roles.json", "r") as f:
+                    all_roles = json.load(f)
+                    for role in all_roles:
+                        role_gatekeeper = ResumeGatekeeper(
+                            jd_skills=role["required_skills"],
+                            critical_skills=role["critical_skills"]
+                        )
+                        role_evidence = role_gatekeeper.parse_resume(extracted_text=extracted_text)
+                        status, _ = role_gatekeeper.rank_candidate(role_evidence)
+                        multi_role_results.append({
+                            "id": role["id"],
+                            "title": role["title"],
+                            "match_score": role_evidence.match_score,
+                            "status": status,
+                            "reasoning": role_evidence.reasoning
+                        })
+            else:
+                logger.warning("job_roles.json not found for multi-role matching")
+        except Exception as e:
+            logger.error(f"Multi-role matching failed: {e}", exc_info=True)
 
-    # Step 6: Save candidate with evidence
-    candidate.resume_path = file_path
-    candidate.resume_evidence = evidence
-    
-    # Record Decision Node
-    add_decision_node(
-        candidate_id=candidate_id,
-        node_type="RESUME",
-        title="Resume Analysis Baseline",
-        description=f"Initial match score established at {evidence.match_score:.1f}%. {evidence.reasoning[:100]}...",
-        impact="positive" if evidence.match_score >= 60 else "neutral" if evidence.match_score >= 30 else "negative",
-        predicted_rank=evidence.match_score
-    )
-    
-    db.save_candidate(candidate)
-    active_sessions[candidate_id] = candidate
-    
-    logger.info(f"Created candidate {candidate_id} from resume upload with {len(multi_role_results)} multi-role matches")
-    
-    return {
-        "success": True,
-        "candidate_id": candidate_id,
-        "name": candidate_name,
-        "rank": rank,
-        "justification": justification,
-        "evidence": {
-            "score": evidence.match_score,
-            "skills_extracted": evidence.skills_extracted,
-            "jd_required": evidence.jd_required,
-            "missing_critical": evidence.missing_critical,
-            "experience_years": evidence.experience_years,
-            "education": evidence.education,
-            "reasoning": evidence.reasoning,
-            "match_calculation": evidence.match_calculation
-        },
-        "multi_role_matches": multi_role_results,
-        "next_step": f"/candidate/{candidate_id}" if rank not in ["REJECT", "GAP_DETECTED", "INCOMPATIBLE"] else None
-    }
+        # Update candidate with evidence
+        candidate.resume_path = file_path
+        candidate.resume_evidence = evidence
+        
+        # Record Decision Node
+        add_decision_node(
+            candidate_id=candidate_id,
+            node_type="RESUME",
+            title="Resume Analysis Baseline",
+            description=f"Initial match score established at {evidence.match_score:.1f}%. {evidence.reasoning[:100]}...",
+            impact="positive" if evidence.match_score >= 60 else "neutral" if evidence.match_score >= 30 else "negative",
+            predicted_rank=evidence.match_score
+        )
+        
+        db.save_candidate(candidate)
+        active_sessions[candidate_id] = candidate
+        
+        logger.info(f"Successfully processed resume for {candidate_id}")
+        
+        return {
+            "success": True,
+            "candidate_id": candidate_id,
+            "name": candidate_name,
+            "rank": rank,
+            "justification": justification,
+            "evidence": {
+                "score": evidence.match_score,
+                "skills_extracted": evidence.skills_extracted,
+                "jd_required": evidence.jd_required,
+                "missing_critical": evidence.missing_critical,
+                "experience_years": evidence.experience_years,
+                "education": evidence.education,
+                "reasoning": evidence.reasoning,
+                "match_calculation": evidence.match_calculation
+            },
+            "multi_role_matches": multi_role_results,
+            "next_step": f"/candidate/{candidate_id}" if rank not in ["REJECT", "GAP_DETECTED", "INCOMPATIBLE"] else None
+        }
+    except Exception as e:
+        logger.error(f"CRITICAL FAILURE in analyze_resume_full: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": f"Resume analysis failed during processing: {str(e)}",
+                "type": type(e).__name__,
+                "trace": traceback.format_exc()[-500:] # Last 500 chars of trace
+            }
+        )
 
 @app.post("/api/resume/upload")
 async def upload_resume(
@@ -566,38 +582,55 @@ async def upload_resume(
         f.write(content)
     
     # Step 3: Extract text ONCE
+    logger.info(f"Extracting text from {file_path}")
     extracted_text = ResumeGatekeeper.extract_text(file_path)
+    logger.info(f"Extracted {len(extracted_text)} characters")
     
     # Step 4: Parse resume with provided skills (primary analysis)
     skills_list = [s.strip() for s in jd_skills.split(",") if s.strip()]
     critical_list = [s.strip() for s in critical_skills.split(",") if s.strip()]
     
+    logger.info(f"Parsing resume for candidate {candidate_id}")
     gatekeeper = ResumeGatekeeper(
         jd_skills=skills_list,
         critical_skills=critical_list
     )
-    evidence = gatekeeper.parse_resume(extracted_text=extracted_text)
-    rank, justification = gatekeeper.rank_candidate(evidence)
+    try:
+        evidence = gatekeeper.parse_resume(extracted_text=extracted_text)
+        logger.info(f"Primary analysis complete. Match score: {evidence.match_score}")
+        rank, justification = gatekeeper.rank_candidate(evidence)
+        logger.info(f"Ranking complete: {rank}")
+    except Exception as e:
+        logger.error(f"Error during primary analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     
     # Step 5: Load job roles for multi-role matching using optimized text
     multi_role_results = []
     try:
-        with open("job_roles.json", "r") as f:
-            all_roles = json.load(f)
-            for role in all_roles:
-                role_gatekeeper = ResumeGatekeeper(
-                    jd_skills=role["required_skills"],
-                    critical_skills=role["critical_skills"]
-                )
-                role_evidence = role_gatekeeper.parse_resume(extracted_text=extracted_text)
-                status, _ = role_gatekeeper.rank_candidate(role_evidence)
-                multi_role_results.append({
-                    "role_id": role["id"],
-                    "title": role["title"],
-                    "match_score": role_evidence.match_score,
-                    "status": status,
-                    "reasoning": role_evidence.reasoning
-                })
+        if os.path.exists("job_roles.json"):
+            with open("job_roles.json", "r") as f:
+                all_roles = json.load(f)
+                for role in all_roles:
+                    logger.info(f"Matching against role: {role['title']}")
+                    role_gatekeeper = ResumeGatekeeper(
+                        jd_skills=role["required_skills"],
+                        critical_skills=role["critical_skills"]
+                    )
+                    role_evidence = role_gatekeeper.parse_resume(extracted_text=extracted_text)
+                    status, _ = role_gatekeeper.rank_candidate(role_evidence)
+                    multi_role_results.append({
+                        "role_id": role["id"],
+                        "title": role["title"],
+                        "match_score": role_evidence.match_score,
+                        "status": status,
+                        "reasoning": role_evidence.reasoning
+                    })
+        else:
+            logger.warning("job_roles.json not found, skipping multi-role matching")
+    except Exception as e:
+        logger.error(f"Error during multi-role matching: {e}", exc_info=True)
+        # We don't fail the whole request for multi-role matching errors
+        pass
     except Exception as e:
         logger.error(f"Multi-role matching failed: {e}")
 
