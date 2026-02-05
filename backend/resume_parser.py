@@ -49,6 +49,13 @@ class ResumeGatekeeper:
         "aws": "amazon web services",
         "gcp": "google cloud platform",
         "azure": "microsoft azure",
+        "aws cloud": "amazon web services",
+        "api": "api integration",
+        "rest": "api integration",
+        "micro-services": "microservices",
+        "ai/ml": "machine learning",
+        "deep learning": "machine learning",
+        "stats": "statistics",
     }
     
     def __init__(self, jd_skills: List[str], critical_skills: Optional[List[str]] = None):
@@ -270,20 +277,25 @@ class ResumeGatekeeper:
             )
         
         # Rank by match score
-        if evidence.match_score >= 80:
+        if evidence.match_score >= 70:
             return (
-                "HIGH_MATCH",
-                f"Strong candidate: {evidence.match_score:.1f}% skill match"
+                "MATCH",
+                f"Strong candidate: {evidence.match_score:.1f}% skill resonance"
             )
-        elif evidence.match_score >= 50:
+        elif evidence.match_score >= 25:
             return (
                 "POTENTIAL",
-                f"Moderate match ({evidence.match_score:.1f}%). Consider for testing."
+                f"Emerging match ({evidence.match_score:.1f}%). Proceed to verification."
+            )
+        elif evidence.match_score > 0:
+            return (
+                "GAP_DETECTED",
+                f"Significant gaps ({evidence.match_score:.1f}%). Low technical resonance."
             )
         else:
             return (
-                "REJECT",
-                f"Low match ({evidence.match_score:.1f}%). Below 50% threshold."
+                "INCOMPATIBLE",
+                "No relevant skills detected for this specific profile."
             )
 
 

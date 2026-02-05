@@ -65,11 +65,15 @@ export function RankingCard({ result, onProceed }) {
                             <div key={i} className="p-3 bg-surface-base/30 border border-surface-overlay rounded-lg flex flex-col gap-1">
                                 <span className="text-[10px] font-mono text-neutral-500 uppercase truncate">{role.title}</span>
                                 <div className="flex items-center justify-between">
-                                    <span className={`text-sm font-mono font-bold ${role.match_score >= 70 ? 'text-success-400' : role.match_score >= 40 ? 'text-warning-400' : 'text-danger-400'}`}>
+                                    <span className={`text-sm font-mono font-bold ${role.match_score >= 70 ? 'text-success-400' : role.match_score >= 25 ? 'text-warning-400' : 'text-danger-400'}`}>
                                         {Math.round(role.match_score)}%
                                     </span>
-                                    <span className={`text-[9px] font-mono px-1 rounded ${role.status === 'HIGH_MATCH' ? 'bg-success-900/40 text-success-300' : 'bg-surface-elevated text-neutral-400'}`}>
-                                        {role.status}
+                                    <span className={`text-[9px] font-mono px-1 rounded ${role.status === 'MATCH' ? 'bg-success-900/40 text-success-300' :
+                                        role.status === 'POTENTIAL' ? 'bg-warning-900/40 text-warning-300' :
+                                            role.status === 'GAP_DETECTED' ? 'bg-primary-900/20 text-primary-400 opacity-60' :
+                                                'bg-surface-elevated text-neutral-500'
+                                        }`}>
+                                        {role.status.replace('_', ' ')}
                                     </span>
                                 </div>
                             </div>

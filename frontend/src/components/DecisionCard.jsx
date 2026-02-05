@@ -489,7 +489,7 @@ export function EvidencePanel({ evidence }) {
             color: 'primary',
             render: () => {
                 // Filter text_evidence for items starting with "Deep Probe:" in competency
-                const probes = candidate.text_evidence?.filter(e => e.competency?.startsWith('Deep Probe:')) || [];
+                const probes = candidate.text_answer_evidence?.filter(e => e.competency?.startsWith('Deep Probe:')) || [];
 
                 if (probes.length === 0) return (
                     <div className="text-center py-4 opacity-40 font-mono text-[10px] uppercase">

@@ -509,15 +509,16 @@ async def analyze_resume_full(
         "justification": justification,
         "evidence": {
             "score": evidence.match_score,
-            "skills_found": evidence.skills_extracted,
-            "skills_missing": list(set(skills_list) - set(evidence.skills_extracted)),
+            "skills_extracted": evidence.skills_extracted,
+            "jd_required": evidence.jd_required,
             "missing_critical": evidence.missing_critical,
             "experience_years": evidence.experience_years,
             "education": evidence.education,
-            "reasoning": evidence.reasoning
+            "reasoning": evidence.reasoning,
+            "match_calculation": evidence.match_calculation
         },
         "multi_role_matches": multi_role_results,
-        "next_step": f"/candidate/{candidate_id}" if rank != "REJECT" else None
+        "next_step": f"/candidate/{candidate_id}" if rank not in ["REJECT", "GAP_DETECTED", "INCOMPATIBLE"] else None
     }
 
 @app.post("/api/resume/upload")
@@ -881,9 +882,19 @@ async def submit_shadow_probe(
         sentiment_score=0.5 # Neutral placeholder
     )
     
-    if candidate.text_evidence is None:
-        candidate.text_evidence = []
-    candidate.text_evidence.append(probe_evidence)
+    if candidate.text_answer_evidence is None:
+        candidate.text_answer_evidence = []
+    candidate.text_answer_evidence.append(probe_evidence)
+    
+    # Forensic Milestone: Shadow Probe Answered
+    add_decision_node(
+        candidate_id=candidate_id,
+        node_type="TEXT",
+        title="Forensic Verification: Shadow Probe Answered",
+        description=f"Candidate explained their logic for question {question_id}. Target Concept: {target_concept}",
+        impact="positive" if len(answer.split()) > 10 else "neutral",
+        evidence_id=f"probe_{question_id}"
+    )
     
     db.save_candidate(candidate)
     active_sessions[candidate_id] = candidate
@@ -1732,7 +1743,7 @@ async def get_live_dashboard(user: dict = Depends(require_recruiter)):
             # Calculate progress
             coding_done = len(c.code_evidence or [])
             mcq_done = len(c.mcq_evidence or [])
-            text_done = len(c.text_evidence or [])
+            text_done = len(c.text_answer_evidence or [])
             psych_done = 1 if c.psychometric_evidence else 0
             
             # Assume 2 coding, 2 MCQ, 2 text, 1 psych as max
