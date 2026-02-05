@@ -879,7 +879,7 @@ async def submit_shadow_probe(
         question_text=probe_question,
         answer_text=answer,
         competency=f"Deep Probe: {target_concept}",
-        sentiment_score=0.5 # Neutral placeholder
+        word_count=len(answer.split())
     )
     
     if candidate.text_answer_evidence is None:
@@ -896,8 +896,9 @@ async def submit_shadow_probe(
         evidence_id=f"probe_{question_id}"
     )
     
-    db.save_candidate(candidate)
-    active_sessions[candidate_id] = candidate
+    # Note: add_decision_node already saves the candidate to DB and active_sessions
+    # so we don't need redundant saves here unless we want to ensure latest object state.
+    # To be safe, we'll let add_decision_node handle the final persistence of the updated candidate.
     
     return {
         "success": True,
@@ -1265,7 +1266,8 @@ async def generate_report(candidate_id: str):
             code_evidence=candidate.code_evidence,
             mcq_evidence=candidate.mcq_evidence,
             psychometric_evidence=candidate.psychometric_evidence,
-            integrity_evidence=integrity_evidence
+            integrity_evidence=integrity_evidence,
+            text_evidence=candidate.text_answer_evidence
         )
     except Exception as e:
         logger.error(f"Decision generation failed for {candidate_id}: {e}")

@@ -13,7 +13,7 @@ from typing import List, Optional
 from datetime import datetime
 from models import (
     ResumeEvidence, CodeExecutionEvidence, MCQEvidence,
-    PsychometricEvidence, IntegrityEvidence, FinalDecision
+    PsychometricEvidence, IntegrityEvidence, FinalDecision, TextAnswerEvidence
 )
 
 # Configure logger
@@ -68,7 +68,8 @@ class ExplainableDecisionEngine:
         code_evidence: Optional[List[CodeExecutionEvidence]],
         mcq_evidence: Optional[List[MCQEvidence]],
         psychometric_evidence: Optional[PsychometricEvidence],
-        integrity_evidence: Optional[IntegrityEvidence]
+        integrity_evidence: Optional[IntegrityEvidence],
+        text_evidence: Optional[List[TextAnswerEvidence]] = None
     ) -> FinalDecision:
         """
         Generate final hiring decision with full audit trail.
@@ -76,7 +77,7 @@ class ExplainableDecisionEngine:
         # Step 1: Build evidence summary (pre-calculated, no AI)
         evidence_summary = self._build_evidence_summary(
             resume_evidence, code_evidence, mcq_evidence,
-            psychometric_evidence, integrity_evidence
+            psychometric_evidence, integrity_evidence, text_evidence
         )
         
         # Step 2: Apply deterministic rules first
@@ -136,7 +137,8 @@ class ExplainableDecisionEngine:
         code_evidence: Optional[List[CodeExecutionEvidence]],
         mcq_evidence: Optional[List[MCQEvidence]],
         psychometric_evidence: Optional[PsychometricEvidence],
-        integrity_evidence: Optional[IntegrityEvidence]
+        integrity_evidence: Optional[IntegrityEvidence],
+        text_evidence: Optional[List[TextAnswerEvidence]] = None
     ) -> dict:
         """
         Build a structured summary of all evidence.
@@ -255,26 +257,32 @@ class ExplainableDecisionEngine:
         else:
             psych_data = {'scores': {}, 'weak_areas': [], 'strong_areas': []}
         
-        # Integrity summary
-        if integrity_evidence:
-            integrity_data = {
-                'total_violations': integrity_evidence.total_violations,
-                'severity_score': integrity_evidence.severity_score,
-                'trustworthiness': integrity_evidence.trustworthiness_rating,
-                'events': [
-                    {'type': e.event_type, 'severity': e.severity}
-                    for e in integrity_evidence.events[:5]  # Last 5 events
+        # Text/Probe summary
+        if text_evidence:
+            probes = [e for e in text_evidence if e.competency.startswith('Deep Probe:')]
+            text_data = {
+                'total_responses': len(text_evidence),
+                'probes_triggered': len(probes),
+                'details': [
+                    {
+                        'question': e.question_text,
+                        'answer': e.answer_text,
+                        'competency': e.competency,
+                        'word_count': e.word_count
+                    }
+                    for e in text_evidence
                 ]
             }
         else:
-            integrity_data = {'total_violations': 0, 'severity_score': 0, 'trustworthiness': 'High'}
-        
+            text_data = {'total_responses': 0, 'probes_triggered': 0, 'details': []}
+            
         return {
             'resume': resume_data,
             'coding': coding_data,
             'mcqs': mcq_data,
             'psychometric': psych_data,
-            'integrity': integrity_data
+            'integrity': integrity_data,
+            'reasoning_probes': text_data
         }
     
     def _apply_auto_rules(self, evidence: dict) -> Optional[dict]:
@@ -370,6 +378,11 @@ Total Violations: {evidence['integrity'].get('total_violations', 0)}
 Severity Score: {evidence['integrity'].get('severity_score', 0)}
 Trustworthiness Rating: {evidence['integrity'].get('trustworthiness', 'Unknown')}
 Recent Events: {json.dumps(evidence['integrity'].get('events', []), indent=2)}
+
+=== REASONING & SHADOW PROBES (CRITICAL FORENSICS) ===
+Total Reasoning Tasks: {evidence['reasoning_probes'].get('total_responses', 0)}
+Deep Probes Triggered: {evidence['reasoning_probes'].get('probes_triggered', 0)}
+Detailed Probe Responses: {json.dumps(evidence['reasoning_probes'].get('details', []), indent=2)}
 
 === CONFLICT ANALYSIS (CRITICAL) ===
 Search for inconsistencies between the Resume claims and actual performance:
