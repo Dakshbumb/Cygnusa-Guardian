@@ -531,6 +531,44 @@ Respond with ONLY the JSON, no additional text."""
             if isinstance(data['reasoning'], str):
                 data['reasoning'] = [data['reasoning']]
             
+            # Normalize Cognitive Profile keys and enum values (resilience layer)
+            if 'cognitive_profile' in data and isinstance(data['cognitive_profile'], dict):
+                cp = data['cognitive_profile']
+                style_map = {
+                    "architectural": "Architectural_Thinker",
+                    "architectural_thinker": "Architectural_Thinker",
+                    "tactical": "Tactical_Executor",
+                    "tactical_executor": "Tactical_Executor",
+                    "innovator": "Creative_Innovator",
+                    "creative_innovator": "Creative_Innovator",
+                    "analyst": "Deep_Analyst",
+                    "deep_analyst": "Deep_Analyst",
+                    "generalist": "Pragmatic_Generalist",
+                    "pragmatic_generalist": "Pragmatic_Generalist"
+                }
+                
+                def normalize_style(style_str):
+                    if not style_str: return "Pragmatic_Generalist"
+                    s = style_str.lower().strip().replace(" ", "_")
+                    return style_map.get(s, "Pragmatic_Generalist")
+
+                cp['primary_style'] = normalize_style(cp.get('primary_style'))
+                if cp.get('secondary_style'):
+                    cp['secondary_style'] = normalize_style(cp.get('secondary_style'))
+                
+                # Ensure scores are floats and exist
+                scores = cp.get('cognitive_scores', {})
+                if not isinstance(scores, dict): scores = {}
+                cp['cognitive_scores'] = {
+                    k: float(v) for k, v in scores.items() if isinstance(v, (int, float))
+                }
+                # Default scores if missing
+                for trait in ['abstraction', 'execution_speed', 'precision', 'creativity']:
+                    if trait not in cp['cognitive_scores']:
+                        cp['cognitive_scores'][trait] = 5.0
+                
+                data['cognitive_profile'] = cp
+
             return data
             
         except Exception as e:
@@ -546,7 +584,14 @@ Respond with ONLY the JSON, no additional text."""
                     f'Error: {str(e)[:100]}'
                 ],
                 'role_fit': 'Unable to determine',
-                'next_steps': 'Manual review by hiring manager'
+                'next_steps': 'Manual review by hiring manager',
+                'cognitive_profile': {
+                    'primary_style': 'Pragmatic_Generalist',
+                    'cognitive_scores': {'abstraction': 5.0, 'execution_speed': 5.0, 'precision': 5.0, 'creativity': 5.0},
+                    'team_gap_fit': 'Analysis unavailable',
+                    'archetype_description': 'System-generated default profile.',
+                    'transparency_logic': 'Fallthrough logic applied due to parsing failure.'
+                }
             }
     
     def _generate_fallback_decision(self, evidence: dict) -> str:
@@ -592,7 +637,14 @@ Respond with ONLY the JSON, no additional text."""
             'confidence': confidence,
             'reasoning': reasoning,
             'role_fit': role_fit,
-            'next_steps': next_steps
+            'next_steps': next_steps,
+            'cognitive_profile': {
+                'primary_style': 'Pragmatic_Generalist',
+                'cognitive_scores': {'abstraction': 5.0, 'execution_speed': 5.0, 'precision': 5.0, 'creativity': 5.0},
+                'team_gap_fit': 'Balanced fit across general competencies',
+                'archetype_description': 'A versatile profile capable of adapting to various team needs.',
+                'transparency_logic': 'Deterministic scoring based on performance thresholds.'
+            }
         }
 
 
