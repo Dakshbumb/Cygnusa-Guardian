@@ -1585,6 +1585,8 @@ async def export_report_pdf(candidate_id: str):
     Export candidate report as downloadable PDF-ready HTML.
     Features premium design with Chart.js visual analytics.
     """
+    import traceback as tb
+    
     candidate = db.get_candidate(candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -1594,10 +1596,24 @@ async def export_report_pdf(candidate_id: str):
     
     decision = candidate.final_decision
     evidence = decision.evidence_summary or {}
-    cognitive = decision.cognitive_profile or {}
+    
+    # FIX: Properly convert cognitive_profile to dict (may be Pydantic model or dict)
+    raw_cognitive = decision.cognitive_profile
+    if raw_cognitive is None:
+        cognitive = {}
+    elif hasattr(raw_cognitive, 'model_dump'):
+        cognitive = raw_cognitive.model_dump()
+    elif hasattr(raw_cognitive, 'dict'):
+        cognitive = raw_cognitive.dict()
+    elif isinstance(raw_cognitive, dict):
+        cognitive = raw_cognitive
+    else:
+        cognitive = {}
+    
     integrity_logs = db.get_integrity_logs(candidate_id)
     
     # 1. Aggregate Data for Charts
+    logger.info(f"DEBUG EXPORT: Starting chart aggregation for {candidate_id}")
     
     # Integrity Breakdown (Bar Chart)
     violation_counts = {}
@@ -2068,9 +2084,9 @@ async def export_report_pdf(candidate_id: str):
     return StreamingResponse(
         io.StringIO(html_content),
         media_type="text/html",
-        headers={{
+        headers={
             "Content-Disposition": f"attachment; filename=cygnusa_report_{candidate_id}.html"
-        }}
+        }
     )
 
 
