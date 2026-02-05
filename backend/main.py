@@ -1463,94 +1463,113 @@ async def generate_report(candidate_id: str):
     Generate final hiring decision with full explainability.
     This is the core "glass-box" feature.
     """
-    candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
-    if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-    
-    # Build integrity evidence from logs (With failure protection)
     try:
-        integrity_events = db.get_integrity_logs(candidate_id)
-        severity_weights = {"low": 1, "medium": 2, "high": 3, "critical": 5}
-        severity_score = sum(severity_weights.get(e.severity, 1) for e in integrity_events)
+        logger.info(f"[GENERATE_REPORT] Starting report generation for {candidate_id}")
         
-        if severity_score == 0:
-            trustworthiness = "High"
-        elif severity_score < 5:
-            trustworthiness = "Medium"
-        else:
-            trustworthiness = "Low"
+        candidate = active_sessions.get(candidate_id) or db.get_candidate(candidate_id)
+        if not candidate:
+            logger.error(f"[GENERATE_REPORT] Candidate not found: {candidate_id}")
+            raise HTTPException(status_code=404, detail="Candidate not found")
         
-        integrity_evidence = IntegrityEvidence(
-            total_violations=len(integrity_events),
-            events=integrity_events,
-            severity_score=severity_score,
-            trustworthiness_rating=trustworthiness
-        )
-    except Exception as e:
-        logger.error(f"Integrity mapping failed: {e}")
-        integrity_evidence = IntegrityEvidence(
-            total_violations=0,
-            events=[],
-            severity_score=0,
-            trustworthiness_rating="Unknown (Recovery Mode)"
-        )
+        logger.info(f"[GENERATE_REPORT] Candidate loaded: {candidate.name}")
+        
+        # Build integrity evidence from logs (With failure protection)
+        try:
+            integrity_events = db.get_integrity_logs(candidate_id)
+            severity_weights = {"low": 1, "medium": 2, "high": 3, "critical": 5}
+            severity_score = sum(severity_weights.get(e.severity, 1) for e in integrity_events)
+            
+            if severity_score == 0:
+                trustworthiness = "High"
+            elif severity_score < 5:
+                trustworthiness = "Medium"
+            else:
+                trustworthiness = "Low"
+            
+            integrity_evidence = IntegrityEvidence(
+                total_violations=len(integrity_events),
+                events=integrity_events,
+                severity_score=severity_score,
+                trustworthiness_rating=trustworthiness
+            )
+            logger.info(f"[GENERATE_REPORT] Integrity evidence built: {len(integrity_events)} events")
+        except Exception as e:
+            logger.error(f"[GENERATE_REPORT] Integrity mapping failed: {e}")
+            integrity_evidence = IntegrityEvidence(
+                total_violations=0,
+                events=[],
+                severity_score=0,
+                trustworthiness_rating="Unknown (Recovery Mode)"
+            )
+        
+        # Generate decision
+        decision = None
+        try:
+            logger.info("[GENERATE_REPORT] Calling decision engine...")
+            decision = decision_engine.generate_decision(
+                candidate_id=candidate_id,
+                candidate_name=candidate.name,
+                resume_evidence=candidate.resume_evidence,
+                code_evidence=candidate.code_evidence,
+                mcq_evidence=candidate.mcq_evidence,
+                psychometric_evidence=candidate.psychometric_evidence,
+                integrity_evidence=integrity_evidence,
+                text_evidence=candidate.text_answer_evidence,
+                keystroke_evidence=candidate.keystroke_evidence
+            )
+            logger.info(f"[GENERATE_REPORT] Decision generated: {decision.outcome}")
+        except Exception as e:
+            logger.error(f"[GENERATE_REPORT] Decision generation failed for {candidate_id}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            
+            # Absolute fallback to allow submission
+            logger.info("[GENERATE_REPORT] Using emergency fallback decision...")
+            fallback_data = decision_engine._generate_fallback_decision({
+                'resume': candidate.resume_evidence.model_dump() if candidate.resume_evidence else {},
+                'coding': {'avg_pass_rate': 0},
+                'integrity': {'total_violations': 0}
+            }, candidate_id=candidate_id)
+            decision = FinalDecision(**fallback_data)
+            logger.info(f"[GENERATE_REPORT] Fallback decision created: {decision.outcome}")
+        
+        # Update candidate
+        candidate.integrity_evidence = integrity_evidence
+        candidate.final_decision = decision
+        candidate.status = "completed"
+        candidate.completed_at = datetime.utcnow().isoformat()
+        
+        # Final Decision Node (Protected)
+        try:
+            add_decision_node(
+                candidate_id=candidate_id,
+                node_type="FINAL",
+                title=f"Forensic Verdict: {decision.outcome}",
+                description=f"AI concluded {decision.outcome}. Reasoning: {decision.reasoning[0] if decision.reasoning else 'N/A'}",
+                impact="positive" if decision.outcome == "HIRE" else "neutral"
+            )
+        except Exception as node_err:
+            logger.warning(f"[GENERATE_REPORT] Failed to add decision node: {node_err}")
+        
+        logger.info(f"[GENERATE_REPORT] Saving candidate to database...")
+        db.save_candidate(candidate)
+        active_sessions[candidate_id] = candidate
+        
+        logger.info(f"[GENERATE_REPORT] Report generated successfully for {candidate_id}: {decision.outcome}")
+        
+        return {
+            "success": True,
+            "decision": decision.model_dump(),
+            "message": f"Decision generated: {decision.outcome}"
+        }
     
-    # Generate decision
-    try:
-        decision = decision_engine.generate_decision(
-            candidate_id=candidate_id,
-            candidate_name=candidate.name,
-            resume_evidence=candidate.resume_evidence,
-            code_evidence=candidate.code_evidence,
-            mcq_evidence=candidate.mcq_evidence,
-            psychometric_evidence=candidate.psychometric_evidence,
-            integrity_evidence=integrity_evidence,
-            text_evidence=candidate.text_answer_evidence,
-            keystroke_evidence=candidate.keystroke_evidence
-        )
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Decision generation failed for {candidate_id}: {e}")
         import traceback
+        logger.error(f"[GENERATE_REPORT] CRITICAL ERROR for {candidate_id}: {e}")
         logger.error(traceback.format_exc())
-        
-        # Absolute fallback to allow submission
-        from models import FinalDecision
-        fallback_data = decision_engine._generate_fallback_decision({
-            'resume': candidate.resume_evidence.model_dump() if candidate.resume_evidence else {},
-            'coding': {'avg_pass_rate': 0},
-            'integrity': {'total_violations': 0}
-        })
-        # FinalDecision initialization will now succeed as we've hardened the fallback data in decision_engine.py
-        decision = FinalDecision(**fallback_data)
-    
-    # Update candidate
-    candidate.integrity_evidence = integrity_evidence
-    candidate.final_decision = decision
-    candidate.status = "completed"
-    candidate.completed_at = datetime.utcnow().isoformat()
-    
-    # Final Decision Node (Protected)
-    try:
-        add_decision_node(
-            candidate_id=candidate_id,
-            node_type="FINAL",
-            title=f"Forensic Verdict: {decision.outcome}",
-            description=f"AI concluded {decision.outcome}. Reasoning: {decision.reasoning[0] if decision.reasoning else 'N/A'}",
-            impact="positive" if decision.outcome == "HIRE" else "neutral"
-        )
-    except:
-        pass
-    
-    db.save_candidate(candidate)
-    active_sessions[candidate_id] = candidate
-    
-    logger.info(f"Report generated for {candidate_id}: {decision.outcome}")
-    
-    return {
-        "success": True,
-        "decision": decision.model_dump(),
-        "message": f"Decision generated: {decision.outcome}"
-    }
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
 
 
 # ==================== Report Export ====================

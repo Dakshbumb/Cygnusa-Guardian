@@ -244,17 +244,32 @@ export function CandidateFlow() {
     // Handle psychometric submission
     const handlePsychometricSubmit = async () => {
         setSubmitting(true);
+        setError(null); // Clear previous errors
 
         try {
+            console.log('[SUBMISSION] Starting psychometric submission for:', candidateId);
             await api.submitPsychometric(candidateId, psychScores);
+            console.log('[SUBMISSION] Psychometric scores submitted successfully');
             setCompletedSections(prev => ({ ...prev, psychometric: true }));
 
             // Generate final report
+            console.log('[SUBMISSION] Generating final report...');
             await api.generateReport(candidateId);
+            console.log('[SUBMISSION] Report generated successfully');
             setCurrentSection('complete');
         } catch (err) {
-            console.error('Psychometric submission failed:', err);
-            setError('Failed to submit assessment. Please try again.');
+            console.error('[SUBMISSION ERROR] Full error object:', err);
+            console.error('[SUBMISSION ERROR] Response data:', err.response?.data);
+            console.error('[SUBMISSION ERROR] Status:', err.response?.status);
+            console.error('[SUBMISSION ERROR] Message:', err.message);
+
+            // Extract the most useful error message
+            const errorDetail = err.response?.data?.detail ||
+                err.response?.data?.message ||
+                err.message ||
+                'Unknown error occurred';
+
+            setError(`Failed to submit assessment: ${errorDetail}`);
         } finally {
             setSubmitting(false);
         }

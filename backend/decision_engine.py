@@ -9,6 +9,8 @@ and passed to the AI. No hidden scoring.
 import logging
 import os
 import json
+import uuid
+import time
 from typing import List, Optional
 from datetime import datetime
 from models import (
@@ -108,11 +110,11 @@ class ExplainableDecisionEngine:
                     decision_data = self._parse_ai_response(raw_response)
                 else:
                     # Fallback to rule-based (already returns dict)
-                    decision_data = self._generate_fallback_decision(evidence_summary)
+                    decision_data = self._generate_fallback_decision(evidence_summary, candidate_id=candidate_id)
                     model_used = "fallback_rules"
                     raw_response = json.dumps(decision_data)
             except Exception as e:
-                decision_data = self._generate_fallback_decision(evidence_summary)
+                decision_data = self._generate_fallback_decision(evidence_summary, candidate_id=candidate_id)
                 model_used = "fallback_rules"
                 raw_response = json.dumps(decision_data)
         
@@ -599,7 +601,7 @@ Respond with ONLY the JSON, no additional text."""
                 }
             }
     
-    def _generate_fallback_decision(self, evidence: dict) -> str:
+    def _generate_fallback_decision(self, evidence: dict, candidate_id: str = "unknown") -> str:
         """Generate deterministic decision when AI unavailable"""
         resume_score = evidence['resume'].get('match_score', 0)
         code_score = evidence['coding'].get('avg_pass_rate', 0)
@@ -638,6 +640,7 @@ Respond with ONLY the JSON, no additional text."""
             next_steps = 'No further action'
         
         return {
+            'candidate_id': candidate_id,
             'outcome': outcome,
             'confidence': confidence,
             'reasoning': reasoning,
