@@ -353,20 +353,25 @@ export function CandidateFlow() {
                 />
             )}
 
-            {/* Integrity Monitor (fixed) */}
-            <IntegrityMonitor
-                candidateId={candidateId}
-                onViolationUpdate={(count) => setViolationCount(count)}
-            />
+            {/* Assessment Monitoring (only while active) */}
+            {currentSection !== 'complete' && assessment && (
+                <>
+                    {/* Integrity Monitor (fixed) */}
+                    <IntegrityMonitor
+                        candidateId={candidateId}
+                        onViolationUpdate={(count) => setViolationCount(count)}
+                    />
 
-            {/* Webcam Proctoring (fixed position) */}
-            <div className="fixed bottom-4 right-4 z-50">
-                <WebcamProctor
-                    candidateId={candidateId}
-                    captureInterval={30000}
-                    onStatusChange={(status) => console.log('Webcam status:', status)}
-                />
-            </div>
+                    {/* Webcam Proctoring (fixed position) */}
+                    <div className="fixed bottom-4 right-4 z-50">
+                        <WebcamProctor
+                            candidateId={candidateId}
+                            captureInterval={30000}
+                            onStatusChange={(status) => console.log('Webcam status:', status)}
+                        />
+                    </div>
+                </>
+            )}
 
             {/* Header */}
             <header className="bg-surface-elevated border-b border-surface-overlay sticky top-0 z-40 backdrop-blur-md bg-surface-elevated/90">

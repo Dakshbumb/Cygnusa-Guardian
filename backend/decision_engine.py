@@ -737,11 +737,25 @@ class ShadowProctorEngine:
         """
         Generate a targeted follow-up question based on the code implementation.
         """
+        # Pool of varied fallback questions for when AI is unavailable
+        fallback_probes = [
+            {"question": "Walk me through your reasoning for choosing this particular algorithm. What alternatives did you consider?", "target_concept": "Algorithm Selection"},
+            {"question": "What is the time and space complexity of your solution? Can you explain how you derived that?", "target_concept": "Big O Complexity"},
+            {"question": "How would your solution handle edge cases like empty input or very large datasets?", "target_concept": "Edge Case Handling"},
+            {"question": "If you had to optimize this solution for memory usage, what would you change?", "target_concept": "Memory Optimization"},
+            {"question": "Explain how you would modify this code to handle concurrent access or threading.", "target_concept": "Concurrency"},
+            {"question": "What data structure did you choose here and why was it the best fit for this problem?", "target_concept": "Data Structures"},
+            {"question": "How would you refactor this code to make it more maintainable and testable?", "target_concept": "Code Design"},
+            {"question": "What potential bugs or failure modes could occur in your implementation?", "target_concept": "Error Handling"},
+        ]
+        
+        # Use code hash to select varied question (deterministic but varied)
+        code_hash = hash(code) % len(fallback_probes)
+        
         if not self.enabled:
-            return {
-                "question": "Can you explain your approach to this problem and any trade-offs you made?",
-                "context": "General explanation requested (AI Probe Offline)"
-            }
+            probe = fallback_probes[code_hash]
+            probe["context"] = "AI Probe Offline - fallback question selected"
+            return probe
 
         prompt = f"""You are a senior technical interviewer. A candidate just submitted code for the following problem:
 
@@ -783,10 +797,8 @@ Respond with ONLY a JSON object:
             return json.loads(text)
         except Exception as e:
             logger.error(f"Shadow Probe generation failed: {e}")
-            return {
-                "question": "Explain the time and space complexity of your specific implementation.",
-                "target_concept": "Big O Complexity"
-            }
+            # Return varied fallback based on code hash
+            return fallback_probes[code_hash]
 
 
 class KeystrokeDynamicsAnalyzer:
