@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    BarChart3, Users, RefreshCw, Download, LogOut, Settings
+    BarChart3, Users, RefreshCw, Download, LogOut, Settings, Upload
 } from 'lucide-react';
 import { api } from '../utils/api';
 
@@ -12,6 +12,8 @@ import { JobRoleTabs, RoleSummaryCard } from '../components/dashboard/JobRoleTab
 import { CandidateRoster } from '../components/dashboard/CandidateRoster';
 import { RosterFilters } from '../components/dashboard/RosterFilters';
 import { BulkActions } from '../components/dashboard/BulkActions';
+import { BulkResumeUpload } from '../components/dashboard/BulkResumeUpload';
+import { BulkImportResults } from '../components/dashboard/BulkImportResults';
 
 /**
  * DashboardMain - Main recruiter dashboard landing page
@@ -32,6 +34,10 @@ export function DashboardMain() {
     const [selectedIds, setSelectedIds] = useState([]);
     const [filters, setFilters] = useState({});
     const [refreshing, setRefreshing] = useState(false);
+
+    // Bulk import states
+    const [showBulkUpload, setShowBulkUpload] = useState(false);
+    const [bulkImportResults, setBulkImportResults] = useState(null);
 
     // Fetch dashboard analytics
     const fetchAnalytics = useCallback(async () => {
@@ -104,6 +110,22 @@ export function DashboardMain() {
         await handleRefresh();
     };
 
+    // Handle bulk import complete
+    const handleBulkImportComplete = (data) => {
+        setShowBulkUpload(false);
+        setBulkImportResults(data);
+    };
+
+    // Handle adding imported candidate to pipeline
+    const handleAddToPipeline = async (candidateId) => {
+        try {
+            await api.bulkUpdateCandidates([candidateId], 'pending');
+            await handleRefresh();
+        } catch (err) {
+            console.error('Failed to add to pipeline:', err);
+        }
+    };
+
     // Filter candidates based on active filters
     const filteredCandidates = useMemo(() => {
         if (!candidates) return [];
@@ -173,6 +195,13 @@ export function DashboardMain() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setShowBulkUpload(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm font-medium"
+                            >
+                                <Upload size={16} />
+                                <span className="hidden sm:inline">Bulk Import</span>
+                            </button>
                             <button
                                 onClick={handleRefresh}
                                 disabled={refreshing}
@@ -274,8 +303,29 @@ export function DashboardMain() {
                     <span>Powered by Explainable AI</span>
                 </div>
             </footer>
+
+            {/* Bulk Import Modal */}
+            {showBulkUpload && (
+                <BulkResumeUpload
+                    onComplete={handleBulkImportComplete}
+                    onCancel={() => setShowBulkUpload(false)}
+                />
+            )}
+
+            {/* Bulk Import Results Modal */}
+            {bulkImportResults && (
+                <BulkImportResults
+                    data={bulkImportResults}
+                    onClose={() => {
+                        setBulkImportResults(null);
+                        handleRefresh();
+                    }}
+                    onAddToPipeline={handleAddToPipeline}
+                />
+            )}
         </div>
     );
 }
 
 export default DashboardMain;
+

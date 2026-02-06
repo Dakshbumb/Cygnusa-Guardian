@@ -14,6 +14,7 @@ const ResumeAnalysisPage = lazy(() => import('./pages/ResumeAnalysisPage').then(
 const SharedReportPage = lazy(() => import('./pages/SharedReportPage'));
 const LiveMonitorPage = lazy(() => import('./pages/LiveMonitorPage').then(m => ({ default: m.LiveMonitorPage })));
 const DashboardMain = lazy(() => import('./pages/DashboardMain').then(m => ({ default: m.DashboardMain })));
+const BulkCandidateDetail = lazy(() => import('./pages/BulkCandidateDetail').then(m => ({ default: m.BulkCandidateDetail })));
 
 // Fast loading spinner component
 function PageLoader() {
@@ -69,6 +70,15 @@ function App() {
                         <ProtectedRoute requiredRole="recruiter">
                             <PageTransition>
                                 <DashboardMain />
+                            </PageTransition>
+                        </ProtectedRoute>
+                    } />
+
+                    {/* Bulk Imported Candidate - Resume Only View */}
+                    <Route path="/recruiter/bulk/:candidateId" element={
+                        <ProtectedRoute requiredRole="recruiter">
+                            <PageTransition>
+                                <BulkCandidateDetail />
                             </PageTransition>
                         </ProtectedRoute>
                     } />

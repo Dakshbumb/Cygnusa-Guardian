@@ -685,6 +685,156 @@ async def upload_resume(
     }
 
 
+# ==================== Bulk Resume Import ====================
+
+@app.post("/api/resume/bulk-analyze")
+async def bulk_analyze_resumes(
+    job_title: str = Form(default="Software Engineer"),
+    jd_skills: str = Form(default="python,javascript,react,nodejs,sql"),
+    critical_skills: str = Form(default=""),
+    files: List[UploadFile] = File(...)
+):
+    """
+    Bulk resume analysis for recruiters.
+    Accepts multiple resume files, analyzes each, and returns ranked results.
+    Maximum 20 files per batch.
+    """
+    MAX_FILES = 20
+    
+    if len(files) > MAX_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum {MAX_FILES} files allowed per batch. Received {len(files)}"
+        )
+    
+    if len(files) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="No files provided"
+        )
+    
+    skills_list = [s.strip() for s in jd_skills.split(",") if s.strip()]
+    critical_list = [s.strip() for s in critical_skills.split(",") if s.strip()]
+    
+    results = []
+    processed = 0
+    failed = 0
+    
+    for file in files:
+        file_result = {
+            "filename": file.filename,
+            "status": "pending",
+            "candidate_id": None,
+            "name": None,
+            "score": 0,
+            "rank": None,
+            "reasoning": None,
+            "skills_matched": [],
+            "missing_critical": [],
+            "experience_years": None,
+            "error": None
+        }
+        
+        try:
+            # Step 1: Validate file
+            is_valid, error_code, error_message = await resume_validator.validate_file(file)
+            if not is_valid:
+                file_result["status"] = "invalid"
+                file_result["error"] = error_message
+                failed += 1
+                results.append(file_result)
+                continue
+            
+            # Step 2: Create candidate
+            candidate_id = f"bulk_{uuid.uuid4().hex[:8]}"
+            
+            # Step 3: Save file
+            file_content = await file.read()
+            local_path = f"uploads/{candidate_id}_{file.filename}"
+            with open(local_path, "wb") as f:
+                f.write(file_content)
+            
+            # Step 4: Extract text
+            extracted_text = ResumeGatekeeper.extract_text(local_path)
+            if not extracted_text or len(extracted_text) < 50:
+                file_result["status"] = "extraction_failed"
+                file_result["error"] = "Could not extract text from resume"
+                failed += 1
+                results.append(file_result)
+                continue
+            
+            # Step 5: Parse and analyze
+            gatekeeper = ResumeGatekeeper(
+                jd_skills=skills_list,
+                critical_skills=critical_list
+            )
+            evidence = gatekeeper.parse_resume(extracted_text=extracted_text)
+            rank, justification = gatekeeper.rank_candidate(evidence)
+            
+            # Try to extract name from resume text (first line often contains name)
+            lines = extracted_text.strip().split('\n')
+            candidate_name = lines[0].strip()[:50] if lines else "Unknown Candidate"
+            # Clean up name - remove common noise
+            if any(x in candidate_name.lower() for x in ['resume', 'cv', 'curriculum', 'page', 'http', '@']):
+                candidate_name = f"Candidate {candidate_id[-4:]}"
+            
+            # Step 6: Create candidate profile
+            candidate = CandidateProfile(
+                id=candidate_id,
+                name=candidate_name,
+                email=f"{candidate_id}@bulk-import.cygnusa",
+                job_title=job_title,
+                status="bulk_imported",
+                resume_path=local_path,
+                resume_evidence=evidence
+            )
+            db.save_candidate(candidate)
+            
+            # Step 7: Populate result
+            file_result["status"] = "success"
+            file_result["candidate_id"] = candidate_id
+            file_result["name"] = candidate_name
+            file_result["score"] = evidence.match_score
+            file_result["rank"] = rank
+            file_result["reasoning"] = evidence.reasoning
+            file_result["justification"] = justification
+            file_result["skills_matched"] = evidence.skills_extracted
+            file_result["missing_critical"] = evidence.missing_critical
+            file_result["experience_years"] = evidence.experience_years
+            file_result["education"] = evidence.education
+            
+            processed += 1
+            logger.info(f"Bulk import: Processed {file.filename} -> {candidate_id} (Score: {evidence.match_score}%)")
+            
+        except Exception as e:
+            file_result["status"] = "error"
+            file_result["error"] = str(e)
+            failed += 1
+            logger.error(f"Bulk import error for {file.filename}: {e}")
+        
+        results.append(file_result)
+    
+    # Sort results by score (highest first)
+    results.sort(key=lambda x: x.get("score", 0), reverse=True)
+    
+    # Assign rankings
+    for i, result in enumerate(results):
+        if result["status"] == "success":
+            result["position"] = i + 1
+    
+    return {
+        "success": True,
+        "total_files": len(files),
+        "processed": processed,
+        "failed": failed,
+        "job_title": job_title,
+        "required_skills": skills_list,
+        "critical_skills": critical_list,
+        "results": results,
+        "top_candidates": [r for r in results if r.get("score", 0) >= 60][:5]
+    }
+
+
 # ==================== Assessment Flow ====================
 
 @app.post("/api/assessment/start")
@@ -707,6 +857,8 @@ async def start_assessment(candidate_id: str = Form(...)):
     # Determine role-specific questions
     coding_qs = []
     mcqs = []
+    domain_qs = []
+    requires_coding = True
     
     try:
         with open("job_roles.json", "r") as f:
@@ -717,17 +869,61 @@ async def start_assessment(candidate_id: str = Form(...)):
                 next((r for r in all_roles if r["id"] == "backend_developer"), all_roles[0])
             )
             
-            # Load coding questions
-            for q_id in target_role.get("coding_question_ids", ["fibonacci"]):
-                if q_id in DEMO_QUESTIONS:
-                    q = DEMO_QUESTIONS[q_id]
-                    coding_qs.append({
-                        "id": f"q_{q_id}",
-                        "title": q["title"],
-                        "description": q["description"],
-                        "template": q["template"],
-                        "language": "python"
-                    })
+            # Check if role requires coding
+            requires_coding = target_role.get("requires_coding", True)
+            
+            if requires_coding:
+                # Load coding questions for tech roles
+                for q_id in target_role.get("coding_question_ids", ["fibonacci"]):
+                    if q_id in DEMO_QUESTIONS:
+                        q = DEMO_QUESTIONS[q_id]
+                        coding_qs.append({
+                            "id": f"q_{q_id}",
+                            "title": q["title"],
+                            "description": q["description"],
+                            "template": q["template"],
+                            "language": "python"
+                        })
+            else:
+                # Load domain questions for non-tech roles
+                try:
+                    with open("domain_questions.json", "r") as dq_file:
+                        domain_data = json.load(dq_file)
+                        domain_category = target_role.get("domain_category", "finance")
+                        
+                        # Get domain-specific questions
+                        for q_id in target_role.get("domain_question_ids", []):
+                            category_qs = domain_data.get("domain_questions", {}).get(domain_category, [])
+                            for dq in category_qs:
+                                if dq["id"] == q_id:
+                                    domain_qs.append(dq)
+                                    break
+                        
+                        # Add soft skills questions (2-3 for all non-tech roles)
+                        soft_skills = domain_data.get("soft_skills", [])
+                        domain_qs.extend(soft_skills[:3])
+                        
+                except Exception as de:
+                    logger.error(f"Failed to load domain questions: {de}")
+                    # Fallback domain questions
+                    domain_qs = [
+                        {
+                            "id": "fallback_domain",
+                            "question": "Describe a challenging situation in your field and how you handled it.",
+                            "competency": "Problem Solving",
+                            "category": "domain",
+                            "min_words": 100,
+                            "max_words": 400
+                        },
+                        {
+                            "id": "fallback_leadership",
+                            "question": "Tell us about a time you led a team or project. What was the outcome?",
+                            "competency": "Leadership",
+                            "category": "soft_skills",
+                            "min_words": 100,
+                            "max_words": 400
+                        }
+                    ]
             
             # Load MCQs
             for m_id in target_role.get("mcq_ids", ["be_q1"]):
@@ -741,8 +937,8 @@ async def start_assessment(candidate_id: str = Form(...)):
                         "correct": m["correct"]
                     })
             
-            # Ensure at least some coding questions exist
-            if not coding_qs:
+            # Ensure at least some coding questions exist for tech roles
+            if requires_coding and not coding_qs:
                 coding_qs = [{"id": "q_fibonacci", **DEMO_QUESTIONS["fibonacci"], "language": "python"}]
             
             # Ensure at least some MCQs exist
@@ -765,25 +961,9 @@ async def start_assessment(candidate_id: str = Form(...)):
         coding_qs = [{"id": "q_fibonacci", **DEMO_QUESTIONS["fibonacci"], "language": "python"}]
         mcqs = [{"id": "be_q1", **DEMO_MCQS["be_q1"]}]
 
-    # Build assessment payload
-    assessment = {
-        "candidate_id": candidate_id,
-        "candidate_name": candidate.name,
-        "job_title": candidate.job_title,
-        "coding_questions": coding_qs,
-        "mcqs": mcqs,
-        
-        # Psychometric sliders
-        "psychometric_sliders": [
-            {"id": "resilience", "label": "I handle setbacks and criticism well", "min": 0, "max": 10},
-            {"id": "leadership", "label": "I naturally take charge in group settings", "min": 0, "max": 10},
-            {"id": "learning", "label": "I actively seek out new skills and knowledge", "min": 0, "max": 10},
-            {"id": "teamwork", "label": "I prefer collaborating over working alone", "min": 0, "max": 10},
-            {"id": "pressure", "label": "I perform well under tight deadlines", "min": 0, "max": 10}
-        ],
-        
-        # Text/Reasoning questions
-        "text_questions": [
+    # Build text questions - adjust based on role type
+    if requires_coding:
+        text_questions = [
             {
                 "id": "text1",
                 "question": "Describe a challenging technical problem you solved. What was your approach and what did you learn?",
@@ -798,21 +978,48 @@ async def start_assessment(candidate_id: str = Form(...)):
                 "min_words": 50,
                 "max_words": 300
             }
+        ]
+    else:
+        # For non-tech roles, use domain questions as the main text questions
+        text_questions = domain_qs
+
+    # Build assessment payload
+    assessment = {
+        "candidate_id": candidate_id,
+        "candidate_name": candidate.name,
+        "job_title": candidate.job_title,
+        "requires_coding": requires_coding,
+        "coding_questions": coding_qs if requires_coding else [],
+        "domain_questions": domain_qs if not requires_coding else [],
+        "mcqs": mcqs,
+        
+        # Psychometric sliders
+        "psychometric_sliders": [
+            {"id": "resilience", "label": "I handle setbacks and criticism well", "min": 0, "max": 10},
+            {"id": "leadership", "label": "I naturally take charge in group settings", "min": 0, "max": 10},
+            {"id": "learning", "label": "I actively seek out new skills and knowledge", "min": 0, "max": 10},
+            {"id": "teamwork", "label": "I prefer collaborating over working alone", "min": 0, "max": 10},
+            {"id": "pressure", "label": "I perform well under tight deadlines", "min": 0, "max": 10}
         ],
         
-        # Assessment configuration
+        # Text/Reasoning questions
+        "text_questions": text_questions,
+        
+        # Assessment configuration - adjust times based on role type
         "config": {
-            "total_time_minutes": 45,
+            "total_time_minutes": 45 if requires_coding else 35,
             "section_times": {
-                "coding": 20,
+                "coding": 20 if requires_coding else 0,
+                "domain": 0 if requires_coding else 20,
                 "mcq": 10,
-                "text": 10,
+                "text": 10 if requires_coding else 5,
                 "psychometric": 5
             }
         },
         
         "instructions": {
-            "coding": "Write Python functions to solve each problem. Your solution function must be named 'solution'.",
+            "coding": "Write Python functions to solve each problem. Your solution function must be named 'solution'." if requires_coding else None,
+            "domain": "Answer each scenario question thoughtfully, drawing on your professional experience." if not requires_coding else None,
             "mcqs": "Select the best response for each workplace scenario.",
             "text": "Answer each question thoughtfully. Your responses will be analyzed for clarity and relevance.",
             "psychometric": "Rate yourself honestly on each statement (0 = Strongly Disagree, 10 = Strongly Agree)",

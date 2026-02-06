@@ -1,0 +1,198 @@
+{
+    "domain_questions": {
+        "finance": [
+            {
+                "id": "fin_q1",
+                "question": "Walk us through how you would value a company for a potential acquisition. What methods would you use and why?",
+                "competency": "Technical Knowledge",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 500
+            },
+            {
+                "id": "fin_q2",
+                "question": "A client's portfolio has underperformed the market by 8% this quarter. How would you explain this to them and what actions would you recommend?",
+                "competency": "Client Communication",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 400
+            },
+            {
+                "id": "fin_q3",
+                "question": "Describe the key factors you would analyze when assessing credit risk for a corporate loan application.",
+                "competency": "Risk Assessment",
+                "category": "domain",
+                "min_words": 80,
+                "max_words": 350
+            }
+        ],
+        "compliance": [
+            {
+                "id": "comp_q1",
+                "question": "You discover that a senior executive has been making trades that might constitute insider trading. Walk us through your investigation process and escalation protocol.",
+                "competency": "Regulatory Knowledge",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 500
+            },
+            {
+                "id": "comp_q2",
+                "question": "How would you implement a new KYC/AML compliance program at a financial institution? What are the key components?",
+                "competency": "Program Implementation",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 400
+            },
+            {
+                "id": "comp_q3",
+                "question": "A regulator has requested documentation for an audit within 48 hours. How would you prioritize and organize this effort?",
+                "competency": "Crisis Management",
+                "category": "domain",
+                "min_words": 80,
+                "max_words": 350
+            }
+        ],
+        "tax": [
+            {
+                "id": "tax_q1",
+                "question": "A multinational client wants to optimize their tax structure across three countries. What factors would you consider and what approach would you recommend?",
+                "competency": "Tax Strategy",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 500
+            },
+            {
+                "id": "tax_q2",
+                "question": "Explain how transfer pricing regulations affect related-party transactions and how you would ensure compliance.",
+                "competency": "Technical Knowledge",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 400
+            }
+        ],
+        "audit": [
+            {
+                "id": "audit_q1",
+                "question": "During an audit, you find a material discrepancy in inventory valuation. Describe your approach to investigating and resolving this issue.",
+                "competency": "Investigative Skills",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 500
+            },
+            {
+                "id": "audit_q2",
+                "question": "How would you assess internal controls for revenue recognition at a SaaS company with subscription-based revenue?",
+                "competency": "Technical Knowledge",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 400
+            }
+        ],
+        "risk": [
+            {
+                "id": "risk_q1",
+                "question": "Describe how you would conduct a stress test for a bank's loan portfolio during an economic downturn scenario.",
+                "competency": "Risk Modeling",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 500
+            },
+            {
+                "id": "risk_q2",
+                "question": "What key risk indicators would you monitor for operational risk, and how would you set thresholds for escalation?",
+                "competency": "Risk Monitoring",
+                "category": "domain",
+                "min_words": 100,
+                "max_words": 400
+            }
+        ]
+    },
+    "soft_skills": [
+        {
+            "id": "soft_leadership",
+            "question": "Describe a time when you had to lead a team through a challenging project or situation. What was your approach and what did you learn?",
+            "competency": "Leadership",
+            "category": "soft_skills",
+            "min_words": 100,
+            "max_words": 400
+        },
+        {
+            "id": "soft_communication",
+            "question": "Tell us about a time you had to explain a complex concept to someone without technical knowledge. How did you ensure they understood?",
+            "competency": "Communication",
+            "category": "soft_skills",
+            "min_words": 80,
+            "max_words": 350
+        },
+        {
+            "id": "soft_conflict",
+            "question": "Describe a situation where you had a significant disagreement with a colleague or manager. How did you handle it and what was the outcome?",
+            "competency": "Conflict Resolution",
+            "category": "soft_skills",
+            "min_words": 80,
+            "max_words": 350
+        },
+        {
+            "id": "soft_pressure",
+            "question": "Tell us about a time when you had to deliver results under significant time pressure or with limited resources. How did you manage?",
+            "competency": "Performance Under Pressure",
+            "category": "soft_skills",
+            "min_words": 80,
+            "max_words": 350
+        },
+        {
+            "id": "soft_ethics",
+            "question": "Describe a situation where you faced an ethical dilemma at work. How did you approach it and what decision did you make?",
+            "competency": "Ethics & Integrity",
+            "category": "soft_skills",
+            "min_words": 80,
+            "max_words": 350
+        },
+        {
+            "id": "soft_adaptability",
+            "question": "Tell us about a time when priorities or requirements changed suddenly. How did you adapt and what was the result?",
+            "competency": "Adaptability",
+            "category": "soft_skills",
+            "min_words": 80,
+            "max_words": 350
+        }
+    ],
+    "question_mappings": {
+        "investment_banker": [
+            "fin_q1",
+            "fin_q2"
+        ],
+        "financial_analyst": [
+            "fin_q2",
+            "fin_q3"
+        ],
+        "quantitative_researcher": [
+            "fin_q1",
+            "risk_q1"
+        ],
+        "risk_manager": [
+            "risk_q1",
+            "risk_q2"
+        ],
+        "portfolio_manager": [
+            "fin_q1",
+            "fin_q2"
+        ],
+        "compliance_officer": [
+            "comp_q1",
+            "comp_q2"
+        ],
+        "tax_consultant": [
+            "tax_q1",
+            "tax_q2"
+        ],
+        "fintech_product_manager": [
+            "fin_q2",
+            "comp_q2"
+        ],
+        "audit_associate": [
+            "audit_q1",
+            "audit_q2"
+        ]
+    }
+}

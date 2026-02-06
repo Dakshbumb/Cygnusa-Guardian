@@ -26,8 +26,8 @@ export function CandidateFlow() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
-    // Track current step
-    const [currentSection, setCurrentSection] = useState('coding'); // coding, text, mcq, psychometric, complete
+    // Track current step - will be adjusted based on requires_coding
+    const [currentSection, setCurrentSection] = useState(null); // null until loaded, then coding/mcq/text/psychometric/complete
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
     // Timer state
@@ -76,6 +76,16 @@ export function CandidateFlow() {
                     defaultScores[s.id] = 5;
                 });
                 setPsychScores(defaultScores);
+
+                // Set initial section based on role type
+                // Non-tech roles skip coding and go directly to MCQ
+                const requiresCoding = response.data.requires_coding !== false;
+                setCurrentSection(requiresCoding ? 'coding' : 'mcq');
+
+                // Mark coding as completed for non-tech roles
+                if (!requiresCoding) {
+                    setCompletedSections(prev => ({ ...prev, coding: true }));
+                }
             } catch (err) {
                 console.error('Failed to load assessment:', err);
                 setError('Failed to load assessment. Please refresh the page.');
@@ -306,26 +316,30 @@ export function CandidateFlow() {
         );
     }
 
-    // Calculate progress
+    // Check if role requires coding
+    const requiresCoding = assessment?.requires_coding !== false;
+
+    // Calculate progress - adjust for non-coding roles
+    const codingQuestionCount = requiresCoding ? (assessment?.coding_questions?.length || 0) : 0;
     const totalSteps =
-        (assessment?.coding_questions?.length || 0) +
+        codingQuestionCount +
         (assessment?.mcqs?.length || 0) +
         (assessment?.text_questions?.length || 0) + 1; // +1 for psychometric
 
     let completedSteps = 0;
     if (currentSection === 'mcq') {
-        completedSteps = assessment.coding_questions.length + currentQuestionIndex;
+        completedSteps = codingQuestionCount + currentQuestionIndex;
     } else if (currentSection === 'text') {
-        completedSteps = assessment.coding_questions.length + assessment.mcqs.length + currentQuestionIndex;
+        completedSteps = codingQuestionCount + (assessment?.mcqs?.length || 0) + currentQuestionIndex;
     } else if (currentSection === 'psychometric') {
-        completedSteps = assessment.coding_questions.length + assessment.mcqs.length + assessment.text_questions.length;
+        completedSteps = codingQuestionCount + (assessment?.mcqs?.length || 0) + (assessment?.text_questions?.length || 0);
     } else if (currentSection === 'complete') {
         completedSteps = totalSteps;
-    } else {
+    } else if (currentSection === 'coding') {
         completedSteps = currentQuestionIndex;
     }
 
-    const progressPercent = (completedSteps / totalSteps) * 100;
+    const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
     return (
         <div className="min-h-screen bg-surface-base text-neutral-50 font-sans selection:bg-primary-500 selection:text-white flex flex-col">
@@ -395,15 +409,18 @@ export function CandidateFlow() {
                             {/* Enhanced Progress Stepper with Step Numbers and Connecting Lines */}
                             <div className="hidden md:flex items-center bg-surface-base border border-surface-overlay rounded-lg px-2 py-1">
                                 {[
-                                    { id: 'coding', icon: Code, label: 'CODING', step: 1 },
-                                    { id: 'mcq', icon: MessageSquare, label: 'MCQ', step: 2 },
-                                    { id: 'text', icon: FileText, label: 'TEXT', step: 3 },
-                                    { id: 'claims', icon: Check, label: 'VERIFY', step: 4 },
-                                    { id: 'psychometric', icon: SlidersHorizontal, label: 'PROFILE', step: 5 },
+                                    // Conditionally include coding step based on role type
+                                    ...(requiresCoding ? [{ id: 'coding', icon: Code, label: 'CODING', step: 1 }] : []),
+                                    { id: 'mcq', icon: MessageSquare, label: 'SCENARIOS', step: requiresCoding ? 2 : 1 },
+                                    { id: 'text', icon: FileText, label: requiresCoding ? 'REASONING' : 'DOMAIN', step: requiresCoding ? 3 : 2 },
+                                    { id: 'claims', icon: Check, label: 'VERIFY', step: requiresCoding ? 4 : 3 },
+                                    { id: 'psychometric', icon: SlidersHorizontal, label: 'PROFILE', step: requiresCoding ? 5 : 4 },
                                 ].map((section, i, arr) => {
                                     const isActive = currentSection === section.id;
                                     const isCompleted = completedSections[section.id];
-                                    const sectionOrder = ['coding', 'mcq', 'text', 'claims', 'psychometric'];
+                                    const sectionOrder = requiresCoding
+                                        ? ['coding', 'mcq', 'text', 'claims', 'psychometric']
+                                        : ['mcq', 'text', 'claims', 'psychometric'];
                                     const currentSectionIndex = sectionOrder.indexOf(currentSection);
                                     const thisSectionIndex = sectionOrder.indexOf(section.id);
                                     const isPast = thisSectionIndex < currentSectionIndex;
@@ -414,10 +431,10 @@ export function CandidateFlow() {
                                             <div className="flex flex-col items-center gap-0.5">
                                                 <div
                                                     className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono font-bold border-2 transition-all duration-300 ${isCompleted || isPast
-                                                            ? 'bg-success-500 border-success-400 text-white shadow-[0_0_8px_rgba(34,197,94,0.4)]'
-                                                            : isActive
-                                                                ? 'bg-primary-600 border-primary-400 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse'
-                                                                : 'bg-surface-elevated border-surface-overlay text-neutral-500'
+                                                        ? 'bg-success-500 border-success-400 text-white shadow-[0_0_8px_rgba(34,197,94,0.4)]'
+                                                        : isActive
+                                                            ? 'bg-primary-600 border-primary-400 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse'
+                                                            : 'bg-surface-elevated border-surface-overlay text-neutral-500'
                                                         }`}
                                                 >
                                                     {isCompleted || isPast ? (
@@ -435,8 +452,8 @@ export function CandidateFlow() {
                                             {/* Connecting Line */}
                                             {i < arr.length - 1 && (
                                                 <div className={`w-6 h-0.5 mx-1 transition-all duration-500 ${completedSections[section.id] || isPast
-                                                        ? 'bg-success-500'
-                                                        : 'bg-surface-overlay'
+                                                    ? 'bg-success-500'
+                                                    : 'bg-surface-overlay'
                                                     }`} />
                                             )}
                                         </div>
@@ -468,8 +485,8 @@ export function CandidateFlow() {
 
             {/* Main Content */}
             <main className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
-                {/* Coding Section */}
-                {currentSection === 'coding' && assessment?.coding_questions && (
+                {/* Coding Section - Only shown for tech roles */}
+                {currentSection === 'coding' && requiresCoding && assessment?.coding_questions?.length > 0 && (
                     <div className="h-[calc(100vh-12rem)] flex flex-col animate-fade-in-up">
                         <div className="flex items-center justify-between mb-4">
                             <span className="font-mono text-xs text-secondary-400">

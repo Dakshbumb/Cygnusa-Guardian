@@ -2,6 +2,7 @@
     {
         "id": "ai_ml_engineer",
         "title": "AI/ML Engineer",
+        "requires_coding": true,
         "required_skills": [
             "python",
             "pytorch",
@@ -28,6 +29,7 @@
     {
         "id": "frontend_architect",
         "title": "Frontend Architect",
+        "requires_coding": true,
         "required_skills": [
             "javascript",
             "typescript",
@@ -54,6 +56,7 @@
     {
         "id": "backend_developer",
         "title": "Backend Developer",
+        "requires_coding": true,
         "required_skills": [
             "python",
             "fastapi",
@@ -80,6 +83,7 @@
     {
         "id": "devops_engineer",
         "title": "DevOps Engineer",
+        "requires_coding": true,
         "required_skills": [
             "aws",
             "kubernetes",
@@ -106,6 +110,7 @@
     {
         "id": "cloud_native_engineer",
         "title": "Cloud Native Engineer",
+        "requires_coding": true,
         "required_skills": [
             "gcp",
             "azure",
@@ -132,6 +137,7 @@
     {
         "id": "cybersecurity_analyst",
         "title": "Cybersecurity Analyst",
+        "requires_coding": true,
         "required_skills": [
             "penetration testing",
             "siem",
@@ -157,6 +163,7 @@
     {
         "id": "data_scientist",
         "title": "Data Scientist",
+        "requires_coding": true,
         "required_skills": [
             "python",
             "pandas",
@@ -183,6 +190,7 @@
     {
         "id": "data_engineer",
         "title": "Data Engineer",
+        "requires_coding": true,
         "required_skills": [
             "spark",
             "hadoop",
@@ -209,6 +217,7 @@
     {
         "id": "qa_automation_engineer",
         "title": "QA Automation Engineer",
+        "requires_coding": true,
         "required_skills": [
             "selenium",
             "cypress",
@@ -235,6 +244,7 @@
     {
         "id": "fullstack_product_engineer",
         "title": "Fullstack Product Engineer",
+        "requires_coding": true,
         "required_skills": [
             "typescript",
             "node",
@@ -260,8 +270,36 @@
         ]
     },
     {
+        "id": "blockchain_developer",
+        "title": "Blockchain Developer",
+        "requires_coding": true,
+        "required_skills": [
+            "solidity",
+            "smart contracts",
+            "ethereum",
+            "web3.js",
+            "cryptography",
+            "rust"
+        ],
+        "critical_skills": [
+            "solidity",
+            "web3.js"
+        ],
+        "coding_question_ids": [
+            "palindrome",
+            "two_sum"
+        ],
+        "mcq_ids": [
+            "bc_q1",
+            "bc_q2",
+            "bc_q3"
+        ]
+    },
+    {
         "id": "investment_banker",
         "title": "Investment Banker",
+        "requires_coding": false,
+        "domain_category": "finance",
         "required_skills": [
             "financial modeling",
             "valuation",
@@ -275,9 +313,9 @@
             "financial modeling",
             "valuation"
         ],
-        "coding_question_ids": [
-            "fibonacci",
-            "two_sum"
+        "domain_question_ids": [
+            "fin_q1",
+            "fin_q2"
         ],
         "mcq_ids": [
             "ib_q1",
@@ -288,6 +326,8 @@
     {
         "id": "financial_analyst",
         "title": "Financial Analyst",
+        "requires_coding": false,
+        "domain_category": "finance",
         "required_skills": [
             "budgeting",
             "forecasting",
@@ -300,9 +340,9 @@
             "budgeting",
             "forecasting"
         ],
-        "coding_question_ids": [
-            "fibonacci",
-            "palindrome"
+        "domain_question_ids": [
+            "fin_q2",
+            "fin_q3"
         ],
         "mcq_ids": [
             "fa_q1",
@@ -313,6 +353,7 @@
     {
         "id": "quantitative_researcher",
         "title": "Quantitative Researcher",
+        "requires_coding": true,
         "required_skills": [
             "stochastic calculus",
             "c++",
@@ -338,6 +379,8 @@
     {
         "id": "risk_manager",
         "title": "Risk Manager",
+        "requires_coding": false,
+        "domain_category": "risk",
         "required_skills": [
             "var",
             "stress testing",
@@ -350,9 +393,9 @@
             "credit risk",
             "compliance"
         ],
-        "coding_question_ids": [
-            "reverse_words",
-            "palindrome"
+        "domain_question_ids": [
+            "risk_q1",
+            "risk_q2"
         ],
         "mcq_ids": [
             "risk_q1",
@@ -363,6 +406,8 @@
     {
         "id": "portfolio_manager",
         "title": "Portfolio Manager",
+        "requires_coding": false,
+        "domain_category": "finance",
         "required_skills": [
             "asset allocation",
             "rebalancing",
@@ -375,9 +420,9 @@
             "asset allocation",
             "equity research"
         ],
-        "coding_question_ids": [
-            "two_sum",
-            "fibonacci"
+        "domain_question_ids": [
+            "fin_q1",
+            "fin_q2"
         ],
         "mcq_ids": [
             "port_q1",
@@ -388,6 +433,8 @@
     {
         "id": "compliance_officer",
         "title": "Compliance Officer",
+        "requires_coding": false,
+        "domain_category": "compliance",
         "required_skills": [
             "aml",
             "kyc",
@@ -400,9 +447,9 @@
             "aml",
             "kyc"
         ],
-        "coding_question_ids": [
-            "reverse_words",
-            "palindrome"
+        "domain_question_ids": [
+            "comp_q1",
+            "comp_q2"
         ],
         "mcq_ids": [
             "comp_q1",
@@ -413,6 +460,8 @@
     {
         "id": "tax_consultant",
         "title": "Tax Consultant",
+        "requires_coding": false,
+        "domain_category": "tax",
         "required_skills": [
             "tax planning",
             "corporate tax",
@@ -425,9 +474,9 @@
             "tax planning",
             "accounting"
         ],
-        "coding_question_ids": [
-            "fibonacci",
-            "two_sum"
+        "domain_question_ids": [
+            "tax_q1",
+            "tax_q2"
         ],
         "mcq_ids": [
             "tax_q1",
@@ -438,6 +487,8 @@
     {
         "id": "fintech_product_manager",
         "title": "FinTech Product Manager",
+        "requires_coding": false,
+        "domain_category": "finance",
         "required_skills": [
             "api integration",
             "payments",
@@ -450,9 +501,9 @@
             "api integration",
             "payments"
         ],
-        "coding_question_ids": [
-            "reverse_words",
-            "two_sum"
+        "domain_question_ids": [
+            "fin_q2",
+            "comp_q2"
         ],
         "mcq_ids": [
             "ftp_q1",
@@ -463,6 +514,8 @@
     {
         "id": "audit_associate",
         "title": "Audit Associate",
+        "requires_coding": false,
+        "domain_category": "audit",
         "required_skills": [
             "internal audit",
             "gaap",
@@ -475,39 +528,14 @@
             "internal audit",
             "gaap"
         ],
-        "coding_question_ids": [
-            "fibonacci",
-            "palindrome"
+        "domain_question_ids": [
+            "audit_q1",
+            "audit_q2"
         ],
         "mcq_ids": [
             "audit_q1",
             "audit_q2",
             "audit_q3"
-        ]
-    },
-    {
-        "id": "blockchain_developer",
-        "title": "Blockchain Developer",
-        "required_skills": [
-            "solidity",
-            "smart contracts",
-            "ethereum",
-            "web3.js",
-            "cryptography",
-            "rust"
-        ],
-        "critical_skills": [
-            "solidity",
-            "web3.js"
-        ],
-        "coding_question_ids": [
-            "palindrome",
-            "two_sum"
-        ],
-        "mcq_ids": [
-            "bc_q1",
-            "bc_q2",
-            "bc_q3"
         ]
     }
 ]

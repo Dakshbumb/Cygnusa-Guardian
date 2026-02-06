@@ -343,7 +343,31 @@ export const api = {
     getUpcomingInterviews: () => http.get('/interviews/upcoming'),
 
     // ==================== Dashboard ====================
-    getLiveDashboard: () => http.get('/dashboard/live')
+    getLiveDashboard: () => http.get('/dashboard/live'),
+
+    // ==================== Bulk Resume Import ====================
+    bulkAnalyzeResumes: async (files, jobTitle = 'Software Engineer', jdSkills = 'python,javascript,react', criticalSkills = '', onProgress = null) => {
+        const fd = new FormData();
+        fd.append('job_title', jobTitle);
+        fd.append('jd_skills', jdSkills);
+        fd.append('critical_skills', criticalSkills);
+
+        // Append all files
+        for (const file of files) {
+            fd.append('files', file);
+        }
+
+        return http.post('/resume/bulk-analyze', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 120000, // 2 minute timeout for bulk processing
+            onUploadProgress: (progressEvent) => {
+                if (onProgress && progressEvent.total) {
+                    const percentComplete = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                    onProgress(percentComplete);
+                }
+            }
+        });
+    }
 };
 
 export default api;
