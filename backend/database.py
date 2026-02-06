@@ -8,8 +8,7 @@ import json
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy import create_engine, Column, String, Integer, Text, JSON, DateTime, ForeignKey, Index, func
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, declarative_base
 from models import CandidateProfile, IntegrityEvent, JobDescription, User, UserRole
 
 Base = declarative_base()

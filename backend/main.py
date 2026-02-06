@@ -65,10 +65,6 @@ app = FastAPI(
 from starlette.middleware.gzip import GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
-# Ensure uploads directory exists
-os.makedirs("uploads", exist_ok=True)
-
-
 # Simple in-memory response cache for dashboard endpoints
 _response_cache = {}
 _cache_ttl = 30  # 30 seconds
@@ -670,9 +666,6 @@ async def upload_resume(
     except Exception as e:
         logger.error(f"Error during multi-role matching: {e}", exc_info=True)
         # We don't fail the whole request for multi-role matching errors
-        pass
-    except Exception as e:
-        logger.error(f"Multi-role matching failed: {e}")
 
 
     # Update candidate

@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# JWT Configuration
-SECRET_KEY = os.getenv("JWT_SECRET", "cygnusa-demo-secret-2026")
+# JWT Configuration - Secret must be at least 32 bytes for HS256 (RFC 7518)
+SECRET_KEY = os.getenv("JWT_SECRET", "cygnusa-demo-secret-key-2026-guardian-secure")
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_HOURS = 24
 
