@@ -83,13 +83,17 @@ class ResumeEvidence(BaseModel):
 
 
 class TestCaseResult(BaseModel):
-    """Single test case execution result"""
+    """Single test case execution result with partial credit support"""
     input: str
     expected: str
     actual: str
     passed: bool
     time_ms: float
     error: Optional[str] = None
+    # Partial credit scoring
+    similarity_score: float = 0.0  # 0-100, how close the output is to expected
+    partial_credit: bool = False  # True if credit was awarded for close match
+
 
 
 class CodeExecutionEvidence(BaseModel):
@@ -207,9 +211,12 @@ class FinalDecision(BaseModel):
     evidentiary_mapping: Optional[Dict[str, str]] = None 
     forensic_trace: Optional[List[str]] = None 
     cognitive_profile: Optional[CognitiveProfile] = None 
+    # Counterfactual explanations - "what-if" scenarios
+    counterfactuals: List[Dict[str, str]] = Field(default_factory=list)
     audit_trail: Dict = Field(default_factory=dict) 
     transparency_token: str = "trace_pending"
     generated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+
 
 
 class DecisionNode(BaseModel):

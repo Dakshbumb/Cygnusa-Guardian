@@ -181,8 +181,95 @@ class ExplainableDecisionEngine:
                 'audit_standard': 'FORENSIC_V1'
             },
             transparency_token=f"AUDIT-{uuid.uuid4().hex[:8].upper()}-{int(time.time())}",
+            counterfactuals=self._generate_counterfactuals(evidence_summary, decision_data.get('outcome', 'NO_HIRE')),
             generated_at=datetime.now().isoformat()
         )
+    
+    def _generate_counterfactuals(self, evidence_summary: dict, current_outcome: str) -> list:
+        """
+        Generate counterfactual explanations - "what-if" scenarios.
+        These explain what would change the outcome.
+        """
+        counterfactuals = []
+        
+        # Get current scores
+        coding_score = evidence_summary.get('coding', {}).get('avg_pass_rate', 0)
+        resume_score = evidence_summary.get('resume', {}).get('match_score', 0)
+        mcq_score = evidence_summary.get('mcqs', {}).get('pass_rate', 0)
+        integrity_violations = evidence_summary.get('integrity', {}).get('total_violations', 0)
+        
+        if current_outcome == 'NO_HIRE':
+            # What would change to HIRE
+            if coding_score < 70:
+                counterfactuals.append({
+                    "condition": "If coding score was 70%+",
+                    "outcome_change": "HIRE",
+                    "current_value": f"{coding_score:.1f}%",
+                    "target_value": "≥70%",
+                    "impact": "high"
+                })
+            
+            if resume_score < 60:
+                counterfactuals.append({
+                    "condition": "If resume match was 60%+",
+                    "outcome_change": "CONDITIONAL",
+                    "current_value": f"{resume_score:.1f}%",
+                    "target_value": "≥60%",
+                    "impact": "medium"
+                })
+            
+            if integrity_violations > 5:
+                counterfactuals.append({
+                    "condition": "If integrity violations were ≤5",
+                    "outcome_change": "CONDITIONAL",
+                    "current_value": f"{integrity_violations} violations",
+                    "target_value": "≤5",
+                    "impact": "high"
+                })
+        
+        elif current_outcome == 'HIRE':
+            # What would change to NO_HIRE
+            if integrity_violations > 0:
+                counterfactuals.append({
+                    "condition": "If integrity violations exceeded 10",
+                    "outcome_change": "NO_HIRE",
+                    "current_value": f"{integrity_violations} violations",
+                    "target_value": ">10",
+                    "impact": "critical"
+                })
+            
+            if coding_score >= 70:
+                threshold = max(0, coding_score - 30)
+                counterfactuals.append({
+                    "condition": f"If coding score dropped below {threshold:.0f}%",
+                    "outcome_change": "CONDITIONAL",
+                    "current_value": f"{coding_score:.1f}%",
+                    "target_value": f"<{threshold:.0f}%",
+                    "impact": "high"
+                })
+        
+        elif current_outcome == 'CONDITIONAL':
+            # What would improve to HIRE
+            if coding_score < 80:
+                counterfactuals.append({
+                    "condition": "If coding score was 80%+",
+                    "outcome_change": "HIRE",
+                    "current_value": f"{coding_score:.1f}%",
+                    "target_value": "≥80%",
+                    "impact": "medium"
+                })
+            
+            # What would worsen to NO_HIRE
+            counterfactuals.append({
+                "condition": "If additional integrity issues detected",
+                "outcome_change": "NO_HIRE",
+                "current_value": f"{integrity_violations} violations",
+                "target_value": ">10",
+                "impact": "high"
+            })
+        
+        return counterfactuals
+
     
     def _build_evidence_summary(
         self,
@@ -749,13 +836,16 @@ class ShadowProctorEngine:
             {"question": "What potential bugs or failure modes could occur in your implementation?", "target_concept": "Error Handling"},
         ]
         
-        # Use code hash to select varied question (deterministic but varied)
-        code_hash = hash(code) % len(fallback_probes)
+        # Use question title + code hash + time for varied selection across different problems
+        import time
+        combined_hash = hash(question_title + code + str(int(time.time()) // 60))  # Changes every minute
+        code_hash = abs(combined_hash) % len(fallback_probes)
         
         if not self.enabled:
-            probe = fallback_probes[code_hash]
+            probe = fallback_probes[code_hash].copy()
             probe["context"] = "AI Probe Offline - fallback question selected"
             return probe
+
 
         prompt = f"""You are a senior technical interviewer. A candidate just submitted code for the following problem:
 

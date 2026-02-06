@@ -6,6 +6,8 @@ import { DecisionCard, EvidencePanel } from '../components/DecisionCard';
 import { AuditTrail } from '../components/AuditTrail';
 import { DecisionTimeline } from '../components/DecisionTimeline';
 import { ResumeAuthenticityPanel } from '../components/ResumeAuthenticityPanel';
+import { DashboardMain } from './DashboardMain';
+import { CandidateDetailTabs } from '../components/dashboard/CandidateDetailTabs';
 import {
     Loader2, ArrowLeft, Download, Share2,
     User, Mail, Briefcase, Calendar,
@@ -124,73 +126,10 @@ export function RecruiterDashboard() {
         );
     }
 
-    // List View Rendering
+    // List View - Redirect to new DashboardMain
     if (!candidateId) {
-        return (
-            <div className="min-h-screen bg-surface-base text-neutral-50 flex flex-col">
-                <Header />
-                <main className="max-w-7xl mx-auto px-6 py-12 w-full">
-                    <div className="mb-10 flex items-end justify-between">
-                        <div>
-                            <h1 className="text-4xl font-display font-bold text-white mb-2 tracking-tight">Candidate Roster</h1>
-                            <p className="text-neutral-400 font-mono text-xs uppercase tracking-widest">
-                                {candidates.length} IDENTIFIED_SUBJECTS // SYSTEM_STATUS: READY
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="px-3 py-1.5 rounded bg-success-900/20 border border-success-500/30 text-success-400 text-[10px] font-mono animate-pulse uppercase tracking-wider">
-                                Surveillance_Active
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid gap-4">
-                        {candidates.length === 0 ? (
-                            <div className="bg-surface-elevated border border-surface-overlay/50 rounded-xl p-20 text-center">
-                                <Activity className="w-12 h-12 text-neutral-600 mx-auto mb-4 opacity-20" />
-                                <p className="text-neutral-500 font-mono text-sm uppercase tracking-widest">No candidates recorded in archive</p>
-                            </div>
-                        ) : (
-                            candidates.map((c) => (
-                                <Link
-                                    key={c.id}
-                                    to={`/recruiter/${c.id}`}
-                                    className="group bg-surface-elevated hover:bg-surface-overlay border border-surface-overlay hover:border-primary-500/30 p-5 rounded-xl transition-all duration-300 flex items-center justify-between shadow-lg hover:shadow-primary-900/10"
-                                >
-                                    <div className="flex items-center gap-5">
-                                        <div className="w-12 h-12 bg-surface-base rounded-full flex items-center justify-center font-bold text-primary-400 border border-surface-overlay group-hover:border-primary-500/50 transition-colors">
-                                            {c.name?.charAt(0) || 'C'}
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-white group-hover:text-primary-400 transition-colors">{c.name}</h3>
-                                            <div className="flex items-center gap-4 mt-1">
-                                                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">{c.job_title}</span>
-                                                <span className="text-[10px] font-mono text-neutral-500">•</span>
-                                                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">Added: {new Date(c.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="text-right hidden sm:block">
-                                            <div className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Status</div>
-                                            <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold font-mono border ${c.status === 'completed'
-                                                ? 'bg-success-900/20 text-success-400 border-success-500/30'
-                                                : 'bg-warning-900/20 text-warning-400 border-warning-500/30'
-                                                }`}>
-                                                {c.status.toUpperCase()}
-                                            </span>
-                                        </div>
-                                        <div className="p-2 rounded-lg bg-surface-base border border-surface-overlay group-hover:border-primary-500/30 text-neutral-500 group-hover:text-primary-400 transition-all">
-                                            <ShieldCheck size={18} />
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))
-                        )}
-                    </div>
-                </main>
-            </div>
-        );
+        // Import DashboardMain dynamically to avoid circular dependencies
+        return <DashboardMain />;
     }
 
     const decision = candidate.final_decision;

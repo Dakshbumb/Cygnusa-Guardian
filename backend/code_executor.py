@@ -82,10 +82,18 @@ class CodeSandbox:
             result = self._run_single_test_python(code, tc)
             test_results.append(result)
         
-        # Calculate statistics
-        passed_count = sum(1 for r in test_results if r.passed)
-        pass_rate = (passed_count / len(test_results)) * 100 if test_results else 0
+        # Calculate statistics with partial credit support
+        # Full pass = 1.0, partial credit = similarity_score/100, fail = 0
+        total_score = 0.0
+        for r in test_results:
+            if r.passed:
+                total_score += 1.0
+            elif r.partial_credit:
+                total_score += r.similarity_score / 100.0  # Weighted partial credit
+        
+        pass_rate = (total_score / len(test_results)) * 100 if test_results else 0
         avg_time = sum(r.time_ms for r in test_results) / len(test_results) if test_results else 0
+
         
         return CodeExecutionEvidence(
             question_id=question_id,
@@ -266,14 +274,21 @@ class CodeSandbox:
             expected = test_case['expected']
             passed = self._compare_outputs(actual_output, expected)
             
+            # Calculate similarity for partial credit
+            similarity = 100.0 if passed else self._calculate_similarity(actual_output, expected)
+            partial_credit = not passed and similarity >= 50.0  # Award partial credit for 50%+ similarity
+            
             return TestCaseResult(
                 input=str(test_case['input']),
                 expected=str(expected),
                 actual=str(actual_output),
                 passed=passed,
                 time_ms=round(execution_time, 2),
-                error=error
+                error=error,
+                similarity_score=similarity,
+                partial_credit=partial_credit
             )
+
             
         except subprocess.TimeoutExpired:
             return TestCaseResult(
@@ -364,6 +379,63 @@ except Exception as e:
             return actual == expected
         
         return False
+
+    def _calculate_similarity(self, actual, expected) -> float:
+        """
+        Calculate similarity score (0-100) between actual and expected output.
+        Uses Levenshtein distance for string comparison.
+        """
+        str_actual = str(actual).strip()
+        str_expected = str(expected).strip()
+        
+        # Exact match = 100%
+        if str_actual == str_expected:
+            return 100.0
+        
+        # Empty outputs
+        if not str_actual or not str_expected:
+            return 0.0
+        
+        # Levenshtein distance-based similarity
+        def levenshtein_distance(s1, s2):
+            if len(s1) < len(s2):
+                return levenshtein_distance(s2, s1)
+            if len(s2) == 0:
+                return len(s1)
+            
+            previous_row = range(len(s2) + 1)
+            for i, c1 in enumerate(s1):
+                current_row = [i + 1]
+                for j, c2 in enumerate(s2):
+                    insertions = previous_row[j + 1] + 1
+                    deletions = current_row[j] + 1
+                    substitutions = previous_row[j] + (c1 != c2)
+                    current_row.append(min(insertions, deletions, substitutions))
+                previous_row = current_row
+            
+            return previous_row[-1]
+        
+        distance = levenshtein_distance(str_actual, str_expected)
+        max_len = max(len(str_actual), len(str_expected))
+        similarity = ((max_len - distance) / max_len) * 100
+        
+        # Also check for numeric near-misses
+        try:
+            actual_num = float(str_actual)
+            expected_num = float(str_expected)
+            if expected_num != 0:
+                pct_diff = abs(actual_num - expected_num) / abs(expected_num)
+                if pct_diff < 0.01:  # Within 1%
+                    similarity = max(similarity, 95.0)
+                elif pct_diff < 0.05:  # Within 5%
+                    similarity = max(similarity, 75.0)
+                elif pct_diff < 0.10:  # Within 10%
+                    similarity = max(similarity, 50.0)
+        except (ValueError, TypeError):
+            pass
+        
+        return round(similarity, 1)
+
 
 
 # ==================== Demo MCQs ====================

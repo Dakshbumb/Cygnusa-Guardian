@@ -392,32 +392,58 @@ export function CandidateFlow() {
                         </div>
 
                         <div className="flex items-center gap-6">
-                            {/* Section indicators */}
-                            <div className="hidden md:flex bg-surface-base border border-surface-overlay rounded-lg p-1">
+                            {/* Enhanced Progress Stepper with Step Numbers and Connecting Lines */}
+                            <div className="hidden md:flex items-center bg-surface-base border border-surface-overlay rounded-lg px-2 py-1">
                                 {[
-                                    { id: 'coding', icon: Code, label: 'CODING_LAB' },
-                                    { id: 'mcq', icon: MessageSquare, label: 'SCENARIOS' },
-                                    { id: 'text', icon: FileText, label: 'REASONING' },
-                                    { id: 'psychometric', icon: SlidersHorizontal, label: 'PROFILE' },
-                                ].map((section, _i) => (
-                                    <div
-                                        key={section.id}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-mono transition-all ${currentSection === section.id
-                                            ? 'bg-primary-900/50 text-primary-300 border border-primary-500/30 shadow-inner'
-                                            : completedSections[section.id]
-                                                ? 'text-success-400 opacity-60'
-                                                : 'text-neutral-500 opacity-40'
-                                            }`}
-                                    >
-                                        {completedSections[section.id] ? (
-                                            <Check size={12} />
-                                        ) : (
-                                            <section.icon size={12} />
-                                        )}
-                                        <span className="tracking-wider">{section.label}</span>
-                                    </div>
-                                ))}
+                                    { id: 'coding', icon: Code, label: 'CODING', step: 1 },
+                                    { id: 'mcq', icon: MessageSquare, label: 'MCQ', step: 2 },
+                                    { id: 'text', icon: FileText, label: 'TEXT', step: 3 },
+                                    { id: 'claims', icon: Check, label: 'VERIFY', step: 4 },
+                                    { id: 'psychometric', icon: SlidersHorizontal, label: 'PROFILE', step: 5 },
+                                ].map((section, i, arr) => {
+                                    const isActive = currentSection === section.id;
+                                    const isCompleted = completedSections[section.id];
+                                    const sectionOrder = ['coding', 'mcq', 'text', 'claims', 'psychometric'];
+                                    const currentSectionIndex = sectionOrder.indexOf(currentSection);
+                                    const thisSectionIndex = sectionOrder.indexOf(section.id);
+                                    const isPast = thisSectionIndex < currentSectionIndex;
+
+                                    return (
+                                        <div key={section.id} className="flex items-center">
+                                            {/* Step Circle */}
+                                            <div className="flex flex-col items-center gap-0.5">
+                                                <div
+                                                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono font-bold border-2 transition-all duration-300 ${isCompleted || isPast
+                                                            ? 'bg-success-500 border-success-400 text-white shadow-[0_0_8px_rgba(34,197,94,0.4)]'
+                                                            : isActive
+                                                                ? 'bg-primary-600 border-primary-400 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse'
+                                                                : 'bg-surface-elevated border-surface-overlay text-neutral-500'
+                                                        }`}
+                                                >
+                                                    {isCompleted || isPast ? (
+                                                        <Check size={12} className="stroke-[3]" />
+                                                    ) : (
+                                                        section.step
+                                                    )}
+                                                </div>
+                                                <span className={`text-[8px] font-mono tracking-tight ${isActive ? 'text-primary-400' : isCompleted || isPast ? 'text-success-400' : 'text-neutral-600'
+                                                    }`}>
+                                                    {section.label}
+                                                </span>
+                                            </div>
+
+                                            {/* Connecting Line */}
+                                            {i < arr.length - 1 && (
+                                                <div className={`w-6 h-0.5 mx-1 transition-all duration-500 ${completedSections[section.id] || isPast
+                                                        ? 'bg-success-500'
+                                                        : 'bg-surface-overlay'
+                                                    }`} />
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
+
 
                             {/* Timer Display */}
                             <div className={`flex items-center gap-3 px-4 py-2 rounded border font-mono font-bold transition-all ${timeLeft < 300

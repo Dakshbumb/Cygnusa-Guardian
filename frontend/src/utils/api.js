@@ -21,13 +21,61 @@ console.log(`📍 API_BASE: ${API_BASE}`);
 console.log(`📍 BASE_URL: ${BASE_URL}`);
 console.log(`📍 ENV_MODE: ${import.meta.env.MODE}`);
 
-// Create axios instance with defaults
+// Create axios instance with optimized defaults
 const http = axios.create({
     baseURL: API_BASE,
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    timeout: 30000, // 30 second timeout
 });
+
+// Simple in-memory cache for GET requests
+const cache = new Map();
+const CACHE_TTL = 30000; // 30 seconds default TTL
+
+const getCacheKey = (url, params) => {
+    return `${url}:${JSON.stringify(params || {})}`;
+};
+
+const getFromCache = (key) => {
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+        return cached.data;
+    }
+    cache.delete(key);
+    return null;
+};
+
+const setCache = (key, data, ttl = CACHE_TTL) => {
+    cache.set(key, { data, timestamp: Date.now(), ttl });
+};
+
+// Clear cache for a specific pattern
+const clearCache = (pattern) => {
+    for (const key of cache.keys()) {
+        if (key.includes(pattern)) {
+            cache.delete(key);
+        }
+    }
+};
+
+// Cached GET request helper
+const cachedGet = async (url, options = {}) => {
+    const { ttl = CACHE_TTL, skipCache = false, params } = options;
+    const cacheKey = getCacheKey(url, params);
+
+    if (!skipCache) {
+        const cached = getFromCache(cacheKey);
+        if (cached) {
+            return { data: cached, fromCache: true };
+        }
+    }
+
+    const response = await http.get(url, { params });
+    setCache(cacheKey, response.data, ttl);
+    return response;
+};
 
 // Request interceptor - add auth header to all requests
 http.interceptors.request.use(
@@ -105,7 +153,8 @@ export const api = {
             job_title: jobTitle
         });
         return http.post('/resume/analyze', fd, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 60000 // 60 second timeout for AI-powered analysis
         });
     },
     uploadResume: async (candidateId, file, jdSkills, criticalSkills = "") => {
@@ -270,6 +319,28 @@ export const api = {
 
     // ==================== Demo ====================
     seedDemo: () => http.post('/demo/seed'),
+
+    // ==================== Dashboard Analytics ====================
+    getDashboardAnalytics: () => http.get('/dashboard/analytics'),
+    getCandidatesByRole: (role = null) =>
+        http.get('/dashboard/candidates-by-role', { params: role ? { role } : {} }),
+    bulkUpdateCandidates: async (candidateIds, action, notes = '') => {
+        return http.patch('/candidates/bulk-update', {
+            candidate_ids: candidateIds,
+            action: action,
+            notes: notes
+        });
+    },
+    addRecruiterNote: async (candidateId, note) => {
+        return http.post(`/candidates/${candidateId}/notes`, { note });
+    },
+
+    // ==================== Interview Scheduling ====================
+    scheduleInterview: async (data) => {
+        return http.post('/interviews/schedule', data);
+    },
+    getInterviewSchedule: (candidateId) => http.get(`/interviews/${candidateId}`),
+    getUpcomingInterviews: () => http.get('/interviews/upcoming'),
 
     // ==================== Dashboard ====================
     getLiveDashboard: () => http.get('/dashboard/live')

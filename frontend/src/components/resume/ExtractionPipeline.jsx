@@ -47,7 +47,21 @@ export function ExtractionPipeline({ file, selectedRole, onComplete, onError }) 
                     setLogs(prev => [...prev.slice(-4), `[${new Date().toLocaleTimeString()}] ANALYSIS COMPLETE: Candidate ${analysisResult.candidate_id}`]);
                 } catch (err) {
                     setFailed(true);
-                    setLogs(prev => [...prev.slice(-4), `[${new Date().toLocaleTimeString()}] ERROR: ${err.response?.data?.detail?.message || 'Analysis failed'}`]);
+                    // Better error message extraction
+                    let errorMsg = 'Analysis failed';
+                    if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+                        errorMsg = 'Request timeout - analysis may still be running';
+                    } else if (err.response?.data?.detail?.message) {
+                        errorMsg = err.response.data.detail.message;
+                    } else if (err.response?.data?.detail) {
+                        errorMsg = typeof err.response.data.detail === 'string'
+                            ? err.response.data.detail
+                            : JSON.stringify(err.response.data.detail);
+                    } else if (err.message) {
+                        errorMsg = err.message;
+                    }
+                    console.error('Resume analysis failed:', err.response?.data || err);
+                    setLogs(prev => [...prev.slice(-4), `[${new Date().toLocaleTimeString()}] ERROR: ${errorMsg}`]);
                     if (onError) onError(err);
                     return;
                 }

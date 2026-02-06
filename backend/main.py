@@ -61,13 +61,61 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Add GZip compression for faster responses
+from starlette.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Ensure uploads directory exists
+os.makedirs("uploads", exist_ok=True)
+
+
+# Simple in-memory response cache for dashboard endpoints
+_response_cache = {}
+_cache_ttl = 30  # 30 seconds
+
+def cache_response(key: str, data: dict, ttl: int = _cache_ttl):
+    """Cache a response with TTL"""
+    _response_cache[key] = {
+        "data": data,
+        "expires": time.time() + ttl
+    }
+
+def get_cached_response(key: str):
+    """Get cached response if valid"""
+    if key in _response_cache:
+        cached = _response_cache[key]
+        if time.time() < cached["expires"]:
+            return cached["data"]
+        del _response_cache[key]
+    return None
+
+def clear_cache(pattern: str = None):
+    """Clear cache entries matching pattern"""
+    if pattern:
+        keys_to_delete = [k for k in _response_cache.keys() if pattern in k]
+        for k in keys_to_delete:
+            del _response_cache[k]
+    else:
+        _response_cache.clear()
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Verbose logging for debugging production connectivity"""
-    logger.info(f"🔍 REQUEST: {request.method} {request.url}")
+    """Optimized logging - only log non-trivial requests"""
+    # Skip logging for frequent/trivial requests
+    skip_log_paths = ["/health", "/api/health", "/snapshots"]
+    should_log = not any(request.url.path.startswith(p) for p in skip_log_paths)
+    
+    if should_log and ENV != "production":
+        logger.info(f"🔍 {request.method} {request.url.path}")
+    
+    start_time = time.time()
     try:
         response = await call_next(request)
-        logger.info(f"✨ RESPONSE: {response.status_code} for {request.url}")
+        duration_ms = (time.time() - start_time) * 1000
+        
+        # Only log slow requests in production
+        if duration_ms > 500 or (should_log and ENV != "production"):
+            logger.info(f"✨ {response.status_code} {request.url.path} ({duration_ms:.0f}ms)")
         return response
     except Exception as e:
         logger.error(f"💥 ERROR: {str(e)}", exc_info=True)
@@ -2279,6 +2327,316 @@ async def revoke_share_link(share_token: str):
     return {"success": True, "message": "Share link revoked"}
 
 
+# ==================== Dashboard Analytics API ====================
+
+@app.get("/api/dashboard/analytics")
+async def get_dashboard_analytics(recruiter: dict = Depends(require_recruiter)):
+    """
+    Get aggregate analytics for the recruiter dashboard.
+    Returns counts, percentages, and trend data.
+    """
+    try:
+        candidates = db.get_all_candidates()
+        
+        # Calculate status counts
+        total = len(candidates)
+        selected = 0
+        rejected = 0
+        pending = 0
+        
+        total_score = 0
+        score_count = 0
+        integrity_violations = 0
+        completed_count = 0
+        
+        # Role distribution
+        role_stats = {}
+        
+        for c in candidates:
+            # Determine status from final_decision
+            outcome = "PENDING"
+            if c.final_decision:
+                outcome = c.final_decision.outcome or "PENDING"
+            
+            if outcome == "HIRE":
+                selected += 1
+            elif outcome == "NO_HIRE":
+                rejected += 1
+            else:
+                pending += 1
+            
+            # Aggregate scores
+            if c.resume_evidence and c.resume_evidence.match_score:
+                total_score += c.resume_evidence.match_score
+                score_count += 1
+            
+            # Count integrity violations
+            if c.integrity_evidence:
+                integrity_violations += c.integrity_evidence.total_violations
+            
+            # Track completion
+            if c.status == "completed":
+                completed_count += 1
+            
+            # Role distribution
+            role = c.job_title or "Unspecified"
+            if role not in role_stats:
+                role_stats[role] = {"total": 0, "selected": 0, "rejected": 0, "pending": 0, "avg_score": 0}
+            role_stats[role]["total"] += 1
+            if outcome == "HIRE":
+                role_stats[role]["selected"] += 1
+            elif outcome == "NO_HIRE":
+                role_stats[role]["rejected"] += 1
+            else:
+                role_stats[role]["pending"] += 1
+        
+        # Calculate averages
+        avg_score = (total_score / score_count) if score_count > 0 else 0
+        completion_rate = (completed_count / total * 100) if total > 0 else 0
+        
+        return {
+            "success": True,
+            "metrics": {
+                "total_candidates": total,
+                "selected": {"count": selected, "percentage": round(selected / total * 100, 1) if total > 0 else 0},
+                "rejected": {"count": rejected, "percentage": round(rejected / total * 100, 1) if total > 0 else 0},
+                "pending": {"count": pending, "percentage": round(pending / total * 100, 1) if total > 0 else 0},
+                "avg_score": round(avg_score, 1),
+                "completion_rate": round(completion_rate, 1),
+                "integrity_violations": integrity_violations
+            },
+            "role_distribution": role_stats,
+            "chart_data": {
+                "status_pie": [
+                    {"label": "Selected", "value": selected, "color": "#22C55E"},
+                    {"label": "Rejected", "value": rejected, "color": "#EF4444"},
+                    {"label": "Pending", "value": pending, "color": "#F59E0B"}
+                ],
+                "role_bar": [
+                    {"role": role, "selected": stats["selected"], "rejected": stats["rejected"], "pending": stats["pending"]}
+                    for role, stats in role_stats.items()
+                ]
+            }
+        }
+    except Exception as e:
+        logger.error(f"Dashboard analytics failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Analytics failed: {str(e)}")
+
+
+@app.get("/api/dashboard/candidates-by-role")
+async def get_candidates_by_role(
+    role: Optional[str] = None,
+    recruiter: dict = Depends(require_recruiter)
+):
+    """
+    Get candidates grouped by role with smart sorting.
+    Selected candidates first, then Pending, then Rejected.
+    """
+    try:
+        candidates = db.get_all_candidates()
+        
+        # Filter by role if specified
+        if role:
+            candidates = [c for c in candidates if c.job_title == role]
+        
+        # Transform to response format with sorting key
+        def get_sort_key(c):
+            outcome = "PENDING"
+            if c.final_decision:
+                outcome = c.final_decision.outcome or "PENDING"
+            # Sort order: HIRE=0, CONDITIONAL=1, PENDING=2, NO_HIRE=3
+            order = {"HIRE": 0, "CONDITIONAL": 1, "PENDING": 2, "NO_HIRE": 3}
+            return order.get(outcome, 2)
+        
+        # Sort candidates
+        sorted_candidates = sorted(candidates, key=get_sort_key)
+        
+        # Build response
+        result = []
+        for c in sorted_candidates:
+            outcome = "PENDING"
+            confidence = "low"
+            if c.final_decision:
+                outcome = c.final_decision.outcome or "PENDING"
+                confidence = c.final_decision.confidence or "low"
+            
+            # Calculate overall score
+            overall_score = 0
+            if c.resume_evidence:
+                overall_score = c.resume_evidence.match_score or 0
+            
+            # Integrity score
+            integrity_score = 100
+            integrity_level = "clean"
+            if c.integrity_evidence:
+                violations = c.integrity_evidence.total_violations
+                integrity_score = max(0, 100 - (violations * 10))
+                if violations > 5:
+                    integrity_level = "major"
+                elif violations > 0:
+                    integrity_level = "minor"
+            
+            result.append({
+                "id": c.id,
+                "name": c.name,
+                "email": c.email,
+                "job_title": c.job_title,
+                "status": c.status,
+                "outcome": outcome,
+                "confidence": confidence,
+                "overall_score": round(overall_score, 1),
+                "integrity_score": integrity_score,
+                "integrity_level": integrity_level,
+                "created_at": c.created_at,
+                "completed_at": c.completed_at
+            })
+        
+        # Get unique roles for tab generation
+        all_candidates = db.get_all_candidates()
+        roles = list(set(c.job_title for c in all_candidates if c.job_title))
+        
+        # Role summary counts
+        role_summary = {}
+        for r in roles:
+            role_candidates = [c for c in all_candidates if c.job_title == r]
+            role_summary[r] = {
+                "total": len(role_candidates),
+                "pending": sum(1 for c in role_candidates if not c.final_decision or c.final_decision.outcome in [None, "PENDING", "CONDITIONAL"])
+            }
+        
+        return {
+            "success": True,
+            "candidates": result,
+            "total": len(result),
+            "available_roles": roles,
+            "role_summary": role_summary
+        }
+    except Exception as e:
+        logger.error(f"Candidates by role failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+
+
+@app.patch("/api/candidates/bulk-update")
+async def bulk_update_candidates(
+    request: Request,
+    recruiter: dict = Depends(require_recruiter)
+):
+    """
+    Bulk update candidate statuses.
+    Request body: {"candidate_ids": [...], "action": "select|reject|pending", "notes": "optional"}
+    """
+    try:
+        body = await request.json()
+        candidate_ids = body.get("candidate_ids", [])
+        action = body.get("action", "").lower()
+        notes = body.get("notes", "")
+        
+        if not candidate_ids:
+            raise HTTPException(status_code=400, detail="No candidate IDs provided")
+        
+        if action not in ["select", "reject", "pending"]:
+            raise HTTPException(status_code=400, detail="Invalid action. Use: select, reject, or pending")
+        
+        # Map action to outcome
+        outcome_map = {
+            "select": "HIRE",
+            "reject": "NO_HIRE",
+            "pending": "PENDING"
+        }
+        new_outcome = outcome_map[action]
+        
+        updated = 0
+        failed = []
+        
+        for cid in candidate_ids:
+            try:
+                candidate = db.get_candidate(cid)
+                if not candidate:
+                    failed.append({"id": cid, "reason": "Not found"})
+                    continue
+                
+                # Update or create final_decision
+                if not candidate.final_decision:
+                    candidate.final_decision = FinalDecision(
+                        candidate_id=cid,
+                        outcome=new_outcome,
+                        confidence="medium",
+                        reasoning=[f"Bulk action by recruiter: {action}"]
+                    )
+                else:
+                    candidate.final_decision.outcome = new_outcome
+                    candidate.final_decision.reasoning.append(f"Bulk updated to {action} by recruiter")
+                
+                # Add decision node for audit trail
+                add_decision_node(
+                    candidate_id=cid,
+                    node_type="MANUAL",
+                    title=f"Recruiter Bulk Action: {action.title()}",
+                    description=notes or f"Status updated to {new_outcome} via bulk action",
+                    impact="positive" if action == "select" else "negative" if action == "reject" else "neutral"
+                )
+                
+                db.save_candidate(candidate)
+                updated += 1
+            except Exception as e:
+                failed.append({"id": cid, "reason": str(e)})
+        
+        return {
+            "success": True,
+            "updated_count": updated,
+            "failed": failed,
+            "action": action,
+            "new_outcome": new_outcome
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk update failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Bulk update failed: {str(e)}")
+
+
+@app.post("/api/candidates/{candidate_id}/notes")
+async def add_recruiter_note(
+    candidate_id: str,
+    request: Request,
+    recruiter: dict = Depends(require_recruiter)
+):
+    """
+    Add a recruiter note to a candidate.
+    """
+    try:
+        body = await request.json()
+        note_text = body.get("note", "")
+        
+        if not note_text:
+            raise HTTPException(status_code=400, detail="Note text is required")
+        
+        candidate = db.get_candidate(candidate_id)
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        # Add as decision node for now (notes are part of audit trail)
+        add_decision_node(
+            candidate_id=candidate_id,
+            node_type="NOTE",
+            title="Recruiter Note Added",
+            description=note_text,
+            impact="neutral"
+        )
+        
+        return {
+            "success": True,
+            "message": "Note added successfully",
+            "candidate_id": candidate_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Add note failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to add note: {str(e)}")
+
+
+
 @app.post("/api/demo/seed")
 async def seed_demo():
     """Seed the database with demo users and candidates"""
@@ -2325,6 +2683,104 @@ async def global_exception_handler(request, exc):
             "path": str(request.url)
         }
     )
+
+
+# ==================== Interview Scheduling API ====================
+
+# In-memory interview schedule storage (for demo - would use database in production)
+interview_schedules = {}
+
+from pydantic import BaseModel as PydanticBaseModel
+
+class InterviewScheduleRequest(PydanticBaseModel):
+    candidate_id: str
+    scheduled_date: str
+    scheduled_time: str
+    interview_type: str = "video"
+    notes: str = ""
+    round: str = "second"
+
+@app.post("/api/interviews/schedule")
+async def schedule_interview(
+    data: InterviewScheduleRequest,
+    recruiter: dict = Depends(require_recruiter)
+):
+    """
+    Schedule an interview for a candidate.
+    Only for Selected/Conditional candidates with 50%+ score.
+    """
+    try:
+        # Verify candidate exists and is eligible
+        candidate = db.get_candidate(data.candidate_id)
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+        
+        # Check eligibility (50%+ match score, Selected or Conditional)
+        outcome = candidate.final_decision.outcome if candidate.final_decision else "PENDING"
+        score = candidate.resume_evidence.match_score if candidate.resume_evidence else 0
+        
+        if outcome not in ["HIRE", "CONDITIONAL"]:
+            raise HTTPException(status_code=400, detail="Only Selected or Conditional candidates can be scheduled")
+        
+        if score < 50:
+            raise HTTPException(status_code=400, detail="Candidate must have 50%+ match score for Round 2")
+        
+        # Create interview schedule
+        schedule_id = str(uuid.uuid4())
+        schedule = {
+            "id": schedule_id,
+            "candidate_id": data.candidate_id,
+            "candidate_name": candidate.name,
+            "candidate_email": candidate.email,
+            "scheduled_date": data.scheduled_date,
+            "scheduled_time": data.scheduled_time,
+            "interview_type": data.interview_type,
+            "notes": data.notes,
+            "round": data.round,
+            "scheduled_by": recruiter.get("email", "recruiter"),
+            "created_at": datetime.now().isoformat(),
+            "status": "scheduled"
+        }
+        
+        interview_schedules[schedule_id] = schedule
+        
+        logger.info(f"Interview scheduled for {candidate.name}: {data.scheduled_date} at {data.scheduled_time}")
+        
+        return {
+            "success": True,
+            "message": f"Interview scheduled for {data.scheduled_date} at {data.scheduled_time}",
+            "schedule": schedule
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Interview scheduling failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/interviews/{candidate_id}")
+async def get_candidate_interviews(
+    candidate_id: str,
+    recruiter: dict = Depends(require_recruiter)
+):
+    """Get all scheduled interviews for a candidate."""
+    schedules = [s for s in interview_schedules.values() if s["candidate_id"] == candidate_id]
+    return {"success": True, "schedules": schedules}
+
+
+@app.get("/api/interviews/upcoming")
+async def get_upcoming_interviews(
+    recruiter: dict = Depends(require_recruiter)
+):
+    """Get all upcoming interviews."""
+    today = datetime.now().date().isoformat()
+    upcoming = [
+        s for s in interview_schedules.values() 
+        if s["scheduled_date"] >= today and s["status"] == "scheduled"
+    ]
+    # Sort by date and time
+    upcoming.sort(key=lambda x: (x["scheduled_date"], x["scheduled_time"]))
+    return {"success": True, "interviews": upcoming}
 
 
 if __name__ == "__main__":

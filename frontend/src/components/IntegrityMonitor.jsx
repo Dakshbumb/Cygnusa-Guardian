@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { api } from '../utils/api';
-import { Eye, EyeOff, AlertTriangle, ShieldCheck, ShieldAlert, Activity, Wifi } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle, ShieldCheck, ShieldAlert, Activity, Wifi, Fingerprint } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { generateDeviceFingerprint } from '../utils/deviceFingerprint';
+
 
 /**
  * IntegrityMonitor - Real-time proctoring component
@@ -16,16 +18,38 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
     const [status, setStatus] = useState('initializing');
     const [isMinimized, setIsMinimized] = useState(false);
     const [webcamError, setWebcamError] = useState(null);
-    const [faceStatus, setFaceStatus] = useState('SCANNING'); // MATCH, NO_FACE, MULTIPLE
+    const [faceStatus, setFaceStatus] = useState('SCANNING'); // MATCH, NO_FACE, MULTIPLE, DIFFERENT_PERSON
     const faceStatusRef = useRef('SCANNING');
     const [isLocked, setIsLocked] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(true);
     const [lockdownReason, setLockdownReason] = useState('');
 
+    // Face identity baseline - capture initial face to compare later
+    const [faceBaselineSet, setFaceBaselineSet] = useState(false);
+    const faceBaselineRef = useRef(null); // Stores { width, height, aspectRatio, landmarkDistances }
+    const baselineConfirmCount = useRef(0); // Require 3 consistent detections before setting baseline
+    const differentPersonCount = useRef(0); // Track suspicious face changes
+
+    // Temporal smoothing for robust face detection - prevents false positives
+    const faceCountHistory = useRef([]); // Track last N face counts for smoothing
+    const SMOOTHING_WINDOW = 5; // Require consistent detection over 5 frames
+    const lastMultipleFaceLogTime = useRef(0); // Debounce multiple face logs
+    const lastNoFaceLogTime = useRef(0); // Debounce no face logs
+    const FACE_LOG_DEBOUNCE_MS = 10000; // Only log face issues every 10 seconds max
+
+    // Typing Burst Detection - detects suspicious rapid text input
+    const lastInputLength = useRef(0); // Track previous input length
+    const lastInputTime = useRef(Date.now()); // Track when last input occurred
+    const BURST_CHAR_THRESHOLD = 40; // Characters appearing at once is suspicious
+    const BURST_TIME_THRESHOLD_MS = 300; // Time window for burst detection
+    const lastBurstLogTime = useRef(0); // Debounce burst logs
+    const BURST_LOG_DEBOUNCE_MS = 5000; // Only log burst events every 5 seconds
+
     // Stability refs to prevent useEffect restarts
     const logViolationRef = useRef(null);
     const captureSnapshotRef = useRef(null);
     const onViolationRef = useRef(onViolation);
+
 
     // Sync refs with latest props/functions
     useEffect(() => {
@@ -72,9 +96,16 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
     const logViolation = useCallback(async (eventType, severity, context = null) => {
         if (isLocked) return;
 
+        // Throttle mobile proximity logs to once per 2 minutes (but allow first one)
         if (eventType === 'mobile_proximity_potential') {
             const lastLog = violations.filter(v => v.eventType === 'mobile_proximity_potential').pop();
             if (lastLog && (new Date() - new Date(lastLog.timestamp)) < 120000) return;
+        }
+
+        // Also throttle external display logs
+        if (eventType === 'external_display_connected') {
+            const lastLog = violations.filter(v => v.eventType === 'external_display_connected').pop();
+            if (lastLog && (new Date() - new Date(lastLog.timestamp)) < 60000) return;
         }
 
         try {
@@ -158,16 +189,26 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                 // 1. Multi-Monitor Detection
                 const isExtended = window.screen.isExtended || (window.screen.availWidth > window.innerWidth * 1.5);
                 if (isExtended) {
-                    logViolation('external_display_connected', 'medium', 'Multiple monitors or extended display detected');
+                    logViolationRef.current?.('external_display_connected', 'medium', 'Multiple monitors or extended display detected');
                 }
 
                 // 2. Bluetooth Proximity Logic (Heuristic for Mobile Detection)
                 if (navigator.bluetooth && navigator.bluetooth.getAvailability) {
-                    const available = await navigator.bluetooth.getAvailability();
-                    if (available) {
-                        // We log this as a mobile signal detected to create the psychological deterrent
-                        logViolation('mobile_proximity_potential', 'medium', 'UNAUTHORIZED_DEVICE_SIGNAL: Potential mobile device detected nearby');
+                    try {
+                        const available = await navigator.bluetooth.getAvailability();
+                        if (available) {
+                            // Log mobile proximity detection
+                            logViolationRef.current?.('mobile_proximity_potential', 'medium', 'UNAUTHORIZED_DEVICE_SIGNAL: Potential mobile device detected nearby');
+                        }
+                    } catch (btErr) {
+                        // Bluetooth API may throw in some browsers
+                        console.warn('Bluetooth check failed:', btErr);
                     }
+                }
+
+                // 3. Check for screen sharing (browser API)
+                if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                    // Can't directly check if sharing, but we can detect if permission was granted
                 }
             } catch (err) {
                 console.warn('Peripheral check error:', err);
@@ -176,58 +217,203 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
         const initIntegrity = async () => {
             try {
-                if (window.FaceDetection && window.Camera) {
+                // Wait for MediaPipe to load (retry up to 10 times with 500ms delay)
+                let mediaPipeReady = false;
+                for (let i = 0; i < 10 && !mediaPipeReady; i++) {
+                    if (window.FaceDetection && window.Camera) {
+                        mediaPipeReady = true;
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+
+                if (mediaPipeReady) {
+                    console.log('MediaPipe loaded successfully');
                     faceDetection = new window.FaceDetection({
                         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`
                     });
 
                     faceDetection.setOptions({
                         model: 'short',
-                        minDetectionConfidence: 0.5
+                        minDetectionConfidence: 0.6 // Higher threshold for accurate detection
                     });
 
                     faceDetection.onResults((results) => {
-                        const faces = results.detections.length;
+                        // Filter detections by confidence score for extra robustness
+                        const highConfidenceDetections = results.detections.filter(d => {
+                            // MediaPipe provides score in detection.score array
+                            const score = d.score?.[0] ?? 1;
+                            return score >= 0.6;
+                        });
+
+                        const rawFaceCount = highConfidenceDetections.length;
                         const canvas = canvasRef.current;
-                        if (canvas) {
+                        const video = videoRef.current;
+
+                        // Apply temporal smoothing - track face count over last N frames
+                        faceCountHistory.current.push(rawFaceCount);
+                        if (faceCountHistory.current.length > SMOOTHING_WINDOW) {
+                            faceCountHistory.current.shift();
+                        }
+
+                        // Calculate smoothed face count (most common value in history)
+                        const faceCountOccurrences = {};
+                        faceCountHistory.current.forEach(count => {
+                            faceCountOccurrences[count] = (faceCountOccurrences[count] || 0) + 1;
+                        });
+
+                        // Find the most frequent face count
+                        let smoothedFaceCount = rawFaceCount;
+                        let maxOccurrence = 0;
+                        for (const [count, occurrence] of Object.entries(faceCountOccurrences)) {
+                            if (occurrence > maxOccurrence) {
+                                maxOccurrence = occurrence;
+                                smoothedFaceCount = parseInt(count);
+                            }
+                        }
+
+                        // Only use smoothed value if we have enough history AND it's consistent
+                        // Require at least 60% of frames to agree to prevent flickering
+                        const requiredConsistency = Math.ceil(SMOOTHING_WINDOW * 0.6);
+                        const faces = (faceCountHistory.current.length >= 3 && maxOccurrence >= requiredConsistency)
+                            ? smoothedFaceCount
+                            : rawFaceCount;
+
+                        if (canvas && video) {
+                            // Sync canvas size with video element
+                            const rect = video.getBoundingClientRect();
+                            if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                                canvas.width = rect.width;
+                                canvas.height = rect.height;
+                            }
+
                             const ctx = canvas.getContext('2d');
                             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                            if (results.detections.length > 0) {
-                                results.detections.forEach(detection => {
+                            if (highConfidenceDetections.length > 0) {
+                                // Only draw bounding boxes for high-confidence detections
+                                highConfidenceDetections.forEach((detection, index) => {
                                     const bbox = detection.boundingBox;
+                                    // Calculate bounding box in canvas coordinates
                                     const x = bbox.xCenter * canvas.width - (bbox.width * canvas.width) / 2;
                                     const y = bbox.yCenter * canvas.height - (bbox.height * canvas.height) / 2;
                                     const w = bbox.width * canvas.width;
                                     const h = bbox.height * canvas.height;
 
-                                    ctx.strokeStyle = faces === 1 ? '#10b981' : '#ef4444';
+                                    // Green for single face (1st), Red for additional faces
+                                    ctx.strokeStyle = (faces === 1) ? '#10b981' : (index === 0 ? '#10b981' : '#ef4444');
                                     ctx.lineWidth = 3;
                                     ctx.strokeRect(x, y, w, h);
 
+                                    // Draw face count label
                                     ctx.fillStyle = ctx.strokeStyle;
-                                    detection.landmarks.forEach(landmark => {
-                                        ctx.beginPath();
-                                        ctx.arc(landmark.x * canvas.width, landmark.y * canvas.height, 2, 0, 2 * Math.PI);
-                                        ctx.fill();
-                                    });
+                                    ctx.font = 'bold 10px monospace';
+                                    ctx.fillText(`Face ${index + 1}`, x, y - 5);
+
+                                    // Draw landmarks if available
+                                    if (detection.landmarks) {
+                                        detection.landmarks.forEach(landmark => {
+                                            ctx.beginPath();
+                                            ctx.arc(landmark.x * canvas.width, landmark.y * canvas.height, 3, 0, 2 * Math.PI);
+                                            ctx.fill();
+                                        });
+                                    }
                                 });
                             }
                         }
 
+                        const now = Date.now();
+
                         if (faces === 0) {
                             setFaceStatus('NO_FACE');
                             faceStatusRef.current = 'NO_FACE';
-                            if (Math.random() < 0.05) logViolationRef.current?.('no_face_detected', 'medium', 'User face not visible');
+                            // Debounced logging - only log once per FACE_LOG_DEBOUNCE_MS
+                            if (now - lastNoFaceLogTime.current > FACE_LOG_DEBOUNCE_MS) {
+                                lastNoFaceLogTime.current = now;
+                                logViolationRef.current?.('no_face_detected', 'medium', 'User face not visible');
+                            }
                         } else if (faces > 1) {
                             setFaceStatus('MULTIPLE');
                             faceStatusRef.current = 'MULTIPLE';
-                            logViolationRef.current?.('multiple_faces', 'high', 'Multiple faces detected');
+                            // Debounced logging - only log once per FACE_LOG_DEBOUNCE_MS
+                            if (now - lastMultipleFaceLogTime.current > FACE_LOG_DEBOUNCE_MS) {
+                                lastMultipleFaceLogTime.current = now;
+                                logViolationRef.current?.('multiple_faces', 'high', `${faces} faces detected - unauthorized person in frame`);
+                            }
                         } else {
-                            if (faceStatusRef.current !== 'MATCH') {
-                                console.log('Face Detected and Matched');
+                            // Single face detected - check identity
+                            const detection = highConfidenceDetections[0];
+                            const bbox = detection.boundingBox;
+                            const currentFace = {
+                                width: bbox.width,
+                                height: bbox.height,
+                                aspectRatio: bbox.width / bbox.height,
+                                xCenter: bbox.xCenter,
+                                yCenter: bbox.yCenter
+                            };
+
+                            // Calculate landmark distances if available (more reliable identity check)
+                            if (detection.landmarks && detection.landmarks.length >= 2) {
+                                const leftEye = detection.landmarks[0];
+                                const rightEye = detection.landmarks[1];
+                                currentFace.eyeDistance = Math.sqrt(
+                                    Math.pow(rightEye.x - leftEye.x, 2) +
+                                    Math.pow(rightEye.y - leftEye.y, 2)
+                                );
+                            }
+
+                            // BASELINE CAPTURE: First few detections establish identity
+                            if (!faceBaselineRef.current) {
+                                baselineConfirmCount.current++;
+                                if (baselineConfirmCount.current >= 3) {
+                                    // Set baseline after 3 consistent detections
+                                    faceBaselineRef.current = { ...currentFace };
+                                    setFaceBaselineSet(true);
+                                    console.log('Face baseline established:', faceBaselineRef.current);
+                                    logViolationRef.current?.('face_baseline_set', 'low', 'Identity baseline captured for session');
+                                }
                                 setFaceStatus('MATCH');
                                 faceStatusRef.current = 'MATCH';
+                            } else {
+                                // IDENTITY COMPARISON: Check if current face matches baseline
+                                const baseline = faceBaselineRef.current;
+
+                                // Calculate similarity score based on face proportions
+                                const aspectDiff = Math.abs(currentFace.aspectRatio - baseline.aspectRatio);
+                                const sizeDiff = Math.abs(currentFace.width - baseline.width) / baseline.width;
+
+                                // Eye distance is most reliable if available
+                                let eyeDistDiff = 0;
+                                if (currentFace.eyeDistance && baseline.eyeDistance) {
+                                    eyeDistDiff = Math.abs(currentFace.eyeDistance - baseline.eyeDistance) / baseline.eyeDistance;
+                                }
+
+                                // Threshold: if face proportions differ by > 25%, flag as different person
+                                const isSuspicious = aspectDiff > 0.25 || sizeDiff > 0.35 || eyeDistDiff > 0.30;
+
+                                if (isSuspicious) {
+                                    differentPersonCount.current++;
+
+                                    if (differentPersonCount.current >= 5) {
+                                        // Confirmed different person
+                                        setFaceStatus('DIFFERENT_PERSON');
+                                        faceStatusRef.current = 'DIFFERENT_PERSON';
+                                        logViolationRef.current?.('identity_mismatch', 'critical',
+                                            `CRITICAL: Different person detected! Face proportions do not match baseline. AspectDiff: ${(aspectDiff * 100).toFixed(1)}%, SizeDiff: ${(sizeDiff * 100).toFixed(1)}%`);
+                                        captureSnapshotRef.current?.(true); // Capture evidence
+                                    }
+                                } else {
+                                    // Reset counter if face matches again
+                                    if (differentPersonCount.current > 0) {
+                                        differentPersonCount.current = Math.max(0, differentPersonCount.current - 1);
+                                    }
+
+                                    if (faceStatusRef.current !== 'MATCH') {
+                                        console.log('Face identity verified - matches baseline');
+                                        setFaceStatus('MATCH');
+                                        faceStatusRef.current = 'MATCH';
+                                    }
+                                }
                             }
 
                             // 3. "Looking Away" Detection Heuristic
@@ -248,9 +434,21 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                     });
 
                     if (videoRef.current) {
+                        // Throttle face detection to 5 FPS for performance
+                        let lastFrameTime = 0;
+                        const frameInterval = 200; // 200ms = 5 FPS
+
                         camera = new window.Camera(videoRef.current, {
                             onFrame: async () => {
-                                await faceDetection.send({ image: videoRef.current });
+                                const now = Date.now();
+                                if (now - lastFrameTime >= frameInterval) {
+                                    lastFrameTime = now;
+                                    try {
+                                        await faceDetection.send({ image: videoRef.current });
+                                    } catch (e) {
+                                        // Silently ignore frame processing errors
+                                    }
+                                }
                             },
                             width: 320,
                             height: 192
@@ -267,12 +465,152 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                         checkPeripherals();
                     }
                 } else {
-                    console.warn('MediaPipe not loaded, falling back to basic webcam');
+                    console.warn('MediaPipe not loaded, trying native FaceDetector API');
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: { width: 320, height: 240 }
                     });
                     if (videoRef.current) {
                         videoRef.current.srcObject = stream;
+
+                        // Try native FaceDetector API (Chrome 89+, Edge 89+)
+                        if ('FaceDetector' in window) {
+                            console.log('Using native FaceDetector API');
+                            const nativeFaceDetector = new window.FaceDetector({
+                                fastMode: true,
+                                maxDetectedFaces: 5
+                            });
+
+                            // Face detection loop with bounding boxes
+                            const detectFacesNative = async () => {
+                                if (!videoRef.current || videoRef.current.readyState < 2) {
+                                    requestAnimationFrame(detectFacesNative);
+                                    return;
+                                }
+
+                                try {
+                                    const faces = await nativeFaceDetector.detect(videoRef.current);
+                                    const canvas = canvasRef.current;
+                                    const video = videoRef.current;
+
+                                    if (canvas && video) {
+                                        // Sync canvas size
+                                        const rect = video.getBoundingClientRect();
+                                        if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                                            canvas.width = rect.width;
+                                            canvas.height = rect.height;
+                                        }
+
+                                        const ctx = canvas.getContext('2d');
+                                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                                        // Calculate scale factors
+                                        const scaleX = canvas.width / video.videoWidth;
+                                        const scaleY = canvas.height / video.videoHeight;
+
+                                        if (faces.length > 0) {
+                                            faces.forEach((face, index) => {
+                                                const box = face.boundingBox;
+                                                const x = box.x * scaleX;
+                                                const y = box.y * scaleY;
+                                                const w = box.width * scaleX;
+                                                const h = box.height * scaleY;
+
+                                                // Green for single face, red for additional
+                                                ctx.strokeStyle = (faces.length === 1) ? '#10b981' : (index === 0 ? '#10b981' : '#ef4444');
+                                                ctx.lineWidth = 3;
+                                                ctx.strokeRect(x, y, w, h);
+
+                                                // Face label
+                                                ctx.fillStyle = ctx.strokeStyle;
+                                                ctx.font = 'bold 10px monospace';
+                                                ctx.fillText(`Face ${index + 1}`, x, y - 5);
+                                            });
+
+                                            // Update face status
+                                            if (faces.length === 1) {
+                                                if (faceStatusRef.current !== 'MATCH') {
+                                                    setFaceStatus('MATCH');
+                                                    faceStatusRef.current = 'MATCH';
+                                                }
+                                            } else {
+                                                if (faceStatusRef.current !== 'MULTIPLE') {
+                                                    setFaceStatus('MULTIPLE');
+                                                    faceStatusRef.current = 'MULTIPLE';
+                                                    const now = Date.now();
+                                                    if (now - lastMultipleFaceLogTime.current > FACE_LOG_DEBOUNCE_MS) {
+                                                        logViolationRef.current?.('multiple_faces', 'high', `Detected ${faces.length} faces`);
+                                                        lastMultipleFaceLogTime.current = now;
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            // No face detected
+                                            if (faceStatusRef.current !== 'NO_FACE') {
+                                                setFaceStatus('NO_FACE');
+                                                faceStatusRef.current = 'NO_FACE';
+                                                const now = Date.now();
+                                                if (now - lastNoFaceLogTime.current > FACE_LOG_DEBOUNCE_MS) {
+                                                    logViolationRef.current?.('no_face', 'medium', 'No face detected in frame');
+                                                    lastNoFaceLogTime.current = now;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn('Native face detection error:', e);
+                                }
+
+                                // Continue detection loop at 5 FPS
+                                setTimeout(() => requestAnimationFrame(detectFacesNative), 200);
+                            };
+
+                            // Start detection when video is ready
+                            videoRef.current.onloadeddata = () => {
+                                detectFacesNative();
+                            };
+                        } else {
+                            console.warn('No FaceDetector API, using simulation mode');
+                            // Fallback: simulate face detection for demo
+                            const simulateFaceDetection = () => {
+                                const canvas = canvasRef.current;
+                                const video = videoRef.current;
+
+                                if (canvas && video && video.readyState >= 2) {
+                                    const rect = video.getBoundingClientRect();
+                                    canvas.width = rect.width;
+                                    canvas.height = rect.height;
+
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                                    // Draw simulated face box in center
+                                    const boxW = canvas.width * 0.4;
+                                    const boxH = canvas.height * 0.5;
+                                    const boxX = (canvas.width - boxW) / 2;
+                                    const boxY = (canvas.height - boxH) / 2 - 10;
+
+                                    ctx.strokeStyle = '#10b981';
+                                    ctx.lineWidth = 3;
+                                    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+                                    ctx.fillStyle = '#10b981';
+                                    ctx.font = 'bold 10px monospace';
+                                    ctx.fillText('Face 1 (Simulated)', boxX, boxY - 5);
+
+                                    if (faceStatusRef.current !== 'MATCH') {
+                                        setFaceStatus('MATCH');
+                                        faceStatusRef.current = 'MATCH';
+                                    }
+                                }
+
+                                requestAnimationFrame(simulateFaceDetection);
+                            };
+
+                            videoRef.current.onloadeddata = () => {
+                                simulateFaceDetection();
+                            };
+                        }
+
                         setStatus('monitoring');
 
                         snapshotInterval = setInterval(() => {
@@ -350,6 +688,37 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
             logViolationRef.current?.('environment_focus_lost', 'medium', 'Interaction with browser sidebar or external app suspected');
         };
 
+        // Typing Burst Detection - catches suspicious rapid text input from external sources
+        const handleTypingBurst = (e) => {
+            const target = e.target;
+            // Only monitor text inputs and textareas
+            if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
+                return;
+            }
+
+            const currentLength = target.value?.length || target.textContent?.length || 0;
+            const now = Date.now();
+            const timeDelta = now - lastInputTime.current;
+            const charDelta = currentLength - lastInputLength.current;
+
+            // Detect burst: many characters in very short time
+            if (charDelta >= BURST_CHAR_THRESHOLD && timeDelta < BURST_TIME_THRESHOLD_MS) {
+                // Debounce logging
+                if (now - lastBurstLogTime.current > BURST_LOG_DEBOUNCE_MS) {
+                    logViolationRef.current?.(
+                        'typing_burst_detected',
+                        'high',
+                        `Suspicious text burst: ${charDelta} characters in ${timeDelta}ms (possible external paste)`
+                    );
+                    lastBurstLogTime.current = now;
+                }
+            }
+
+            // Update tracking refs
+            lastInputLength.current = currentLength;
+            lastInputTime.current = now;
+        };
+
         // Step 2: Fullscreen Protocol
         const enforceFullscreen = () => {
             if (!document.fullscreenElement) {
@@ -378,6 +747,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('fullscreenchange', enforceFullscreen);
         window.addEventListener('blur', handleBlur);
+        document.addEventListener('input', handleTypingBurst); // Typing burst detection
 
         // Initial request on mount
         requestFullscreen();
@@ -393,6 +763,24 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
             document.removeEventListener('keydown', handleKeyDown);
             document.removeEventListener('fullscreenchange', enforceFullscreen);
             window.removeEventListener('blur', handleBlur);
+            document.removeEventListener('input', handleTypingBurst); // Cleanup typing burst
+
+
+            // Stop MediaPipe camera and face detection
+            if (camera) {
+                try {
+                    camera.stop();
+                } catch (e) {
+                    console.warn('Camera cleanup error:', e);
+                }
+            }
+            if (faceDetection) {
+                try {
+                    faceDetection.close();
+                } catch (e) {
+                    console.warn('FaceDetection cleanup error:', e);
+                }
+            }
 
             if (videoRef.current?.srcObject) {
                 videoRef.current.srcObject.getTracks().forEach(track => track.stop());
@@ -539,10 +927,8 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
                                         <canvas
                                             ref={canvasRef}
-                                            className="absolute inset-0 z-20 w-full h-48 pointer-events-none"
+                                            className="absolute inset-0 z-20 pointer-events-none"
                                             style={{ width: '100%', height: '100%' }}
-                                            width={320}
-                                            height={192}
                                         />
 
                                         <video

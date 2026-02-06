@@ -14,6 +14,18 @@ export function ShadowProber({ candidateId, questionId, code, onComplete }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
+        // Pool of varied fallback probes for when API is unavailable
+        const fallbackProbes = [
+            { question: "Walk me through your reasoning for choosing this particular algorithm. What alternatives did you consider?", target_concept: "Algorithm Selection" },
+            { question: "What is the time and space complexity of your solution? How did you derive that?", target_concept: "Big O Complexity" },
+            { question: "How would your solution handle edge cases like empty input or very large datasets?", target_concept: "Edge Case Handling" },
+            { question: "If you had to optimize this solution for memory usage, what would you change?", target_concept: "Memory Optimization" },
+            { question: "What data structure did you choose here and why was it the best fit for this problem?", target_concept: "Data Structures" },
+            { question: "How would you refactor this code to make it more maintainable and testable?", target_concept: "Code Design" },
+            { question: "What potential bugs or failure modes could occur in your implementation?", target_concept: "Error Handling" },
+            { question: "Explain the core logic of your solution in simple terms, as if teaching a junior developer.", target_concept: "Communication" },
+        ];
+
         const fetchProbe = async () => {
             try {
                 const response = await api.generateProbe(candidateId, questionId, code);
@@ -23,17 +35,17 @@ export function ShadowProber({ candidateId, questionId, code, onComplete }) {
                 }
             } catch (err) {
                 console.error('Failed to generate shadow probe:', err);
-                // Fallback probe
-                setProbe({
-                    question: "Can you explain your approach and the time/space complexity of your solution?",
-                    target_concept: "General Architecture"
-                });
+                // Select varied fallback based on questionId hash + random factor
+                const hashCode = (str) => str.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0);
+                const index = Math.abs(hashCode(questionId + Date.now().toString().slice(-3))) % fallbackProbes.length;
+                setProbe(fallbackProbes[index]);
                 setStatus('active');
             }
         };
 
         fetchProbe();
     }, [candidateId, questionId, code]);
+
 
     const handleSubmit = async () => {
         if (!answer.trim() || isSubmitting) return;
@@ -146,8 +158,8 @@ export function ShadowProber({ candidateId, questionId, code, onComplete }) {
                                         onClick={handleSubmit}
                                         disabled={!answer.trim() || isSubmitting}
                                         className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-mono text-sm font-bold uppercase tracking-widest transition-all ${!answer.trim() || isSubmitting
-                                                ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
-                                                : 'bg-primary-600 text-white hover:bg-primary-500 shadow-lg shadow-primary-900/50 border border-primary-500 hover:scale-[1.01]'
+                                            ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
+                                            : 'bg-primary-600 text-white hover:bg-primary-500 shadow-lg shadow-primary-900/50 border border-primary-500 hover:scale-[1.01]'
                                             }`}
                                     >
                                         {isSubmitting ? (
