@@ -1,12 +1,22 @@
-import os
-import re
-import magic
-import pdfplumber
-import docx
+"""
+Cygnusa Guardian - Resume Validator
+
+Three-layer validation pipeline for uploaded resumes:
+  Layer 1: File type, MIME, magic bytes, and size checks
+  Layer 2: Content structure (regex-based section detection)
+  Layer 3: AI classification via Gemini Flash (optional)
+"""
+
 import io
 import json
 import logging
-from typing import Dict, Tuple, List, Optional
+import os
+import re
+from typing import Dict, List, Optional, Tuple
+
+import magic
+import pdfplumber
+import docx
 from fastapi import UploadFile
 import google.generativeai as genai
 

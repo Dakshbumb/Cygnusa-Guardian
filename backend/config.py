@@ -125,11 +125,11 @@ def get_settings() -> Settings:
     """
     Cached settings instance.
     Use this function to get settings throughout the application.
-    
-    Example:
+
+    Example::
+
         from config import get_settings
         settings = get_settings()
-        print(settings.DATABASE_URL)
     """
     return Settings()
 

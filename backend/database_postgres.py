@@ -5,10 +5,13 @@ Supports both SQLite (default) and PostgreSQL via environment variable
 
 import os
 import json
+import logging
 from typing import Optional, List
 from datetime import datetime
 from abc import ABC, abstractmethod
 from models import CandidateProfile, IntegrityEvent, JobDescription
+
+logger = logging.getLogger("cygnusa-db")
 
 # Check for PostgreSQL support
 try:
@@ -272,13 +275,13 @@ def create_database() -> DatabaseAdapter:
     database_url = os.getenv("DATABASE_URL")
     
     if database_url and POSTGRES_AVAILABLE:
-        print(f"🐘 Using PostgreSQL database")
+        logger.info("Using PostgreSQL database")
         return PostgreSQLDatabase(database_url)
     else:
         if database_url and not POSTGRES_AVAILABLE:
-            print("⚠️ DATABASE_URL set but psycopg2 not installed, falling back to SQLite")
+            logger.warning("DATABASE_URL set but psycopg2 not installed, falling back to SQLite")
         else:
-            print("📦 Using SQLite database (cygnusa.db)")
+            logger.info("Using SQLite database (cygnusa.db)")
         
         # Import and use existing SQLite database
         from database import Database

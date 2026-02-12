@@ -312,7 +312,7 @@ class CodeSandbox:
             # Cleanup temp file
             try:
                 os.remove(temp_path)
-            except:
+            except OSError:
                 pass
     
     def _build_test_wrapper(self, code: str, test_input) -> str:

@@ -367,8 +367,8 @@ export function CandidateFlow() {
                 />
             )}
 
-            {/* Assessment Monitoring (only while active) */}
-            {currentSection !== 'complete' && assessment && (
+            {/* Assessment Monitoring (only for candidates, never recruiters) */}
+            {currentSection !== 'complete' && assessment && localStorage.getItem('role') !== 'recruiter' && (
                 <>
                     {/* Integrity Monitor (fixed) */}
                     <IntegrityMonitor

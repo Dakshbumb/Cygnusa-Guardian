@@ -91,7 +91,7 @@ def get_optional_user(authorization: Optional[str] = Header(None)) -> Optional[d
         if not authorization:
             return None
         return verify_token(authorization)
-    except:
+    except Exception:
         return None
 
 

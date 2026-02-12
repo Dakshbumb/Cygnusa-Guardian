@@ -167,7 +167,7 @@ class ResumeGatekeeper:
                 return ""
 
     def _extract_text(self, pdf_path: str) -> str:
-        """Deprecated: Use static extract_text instead"""
+        """Deprecated: Use the static ``extract_text`` method instead."""
         return self.extract_text(pdf_path)
     
     def _extract_skills_with_context(self, text: str) -> Tuple[List[str], Dict[str, str]]:
@@ -444,7 +444,7 @@ class ClaimExtractor:
                             return "high"
                         elif value >= 50:
                             return "medium"
-                    except:
+                    except (ValueError, TypeError):
                         pass
                 return "medium"
             

@@ -711,7 +711,7 @@ Respond with ONLY the JSON, no additional text."""
                     for alias in aliases:
                         if alias in scores:
                             try: val = float(scores[alias]); break
-                            except: continue
+                            except (ValueError, TypeError): continue
                     norm_scores[target] = val
                 
                 cp['cognitive_scores'] = norm_scores
@@ -1032,7 +1032,7 @@ def demo_decision():
         logger.info(f"  - {r}")
     logger.info(f"Role Fit: {decision.role_fit}")
     logger.info(f"Next Steps: {decision.next_steps}")
-    print(f"\nModel Used: {decision.audit_trail['model_used']}")
+    logger.info(f"Model Used: {decision.audit_trail['model_used']}")
     
     return decision
 

@@ -112,40 +112,20 @@ export function HomePage() {
 
                         <div className="flex flex-wrap gap-4">
                             <button
-                                onClick={() => navigate('/resume-analysis')}
+                                onClick={() => navigate('/login')}
                                 className="flex items-center gap-3 px-8 py-4 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-semibold transition-all shadow-lg shadow-primary-900/50 border border-primary-500 hover:scale-[1.02] group"
                             >
-                                <FileSearch size={20} className="group-hover:animate-pulse" />
-                                <span>Evaluate Candidate</span>
+                                <Users size={20} className="group-hover:animate-pulse" />
+                                <span>Recruiter Login</span>
                             </button>
 
                             <button
-                                onClick={seedDemoData}
-                                disabled={seeding}
-                                className="flex items-center gap-3 px-8 py-4 bg-surface-elevated hover:bg-surface-overlay text-white rounded-lg font-semibold transition-all border border-surface-overlay hover:border-primary-500/50 disabled:opacity-50"
+                                onClick={() => navigate('/login')}
+                                className="flex items-center gap-3 px-8 py-4 bg-surface-elevated hover:bg-surface-overlay text-white rounded-lg font-semibold transition-all border border-surface-overlay hover:border-primary-500/50"
                             >
-                                {seeding ? (
-                                    <>
-                                        <Loader2 className="animate-spin" size={20} />
-                                        <span>INITIALIZING...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Plus size={20} />
-                                        <span>Load Demo Data</span>
-                                    </>
-                                )}
+                                <FileSearch size={20} />
+                                <span>Candidate Login</span>
                             </button>
-
-                            {candidates.length > 0 && (
-                                <a
-                                    href="#candidates"
-                                    className="flex items-center gap-3 px-8 py-4 bg-surface-elevated hover:bg-surface-overlay text-white rounded-lg font-semibold transition-all border border-surface-overlay hover:border-primary-500/50"
-                                >
-                                    <Users size={20} />
-                                    <span>View Evidence ({candidates.length})</span>
-                                </a>
-                            )}
                         </div>
                     </div>
 
