@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 
@@ -11,35 +11,95 @@ export function DashboardMain() {
     const [activeTab, setActiveTab] = useState('All Candidates');
     const [loading, setLoading] = useState(true);
 
+    // Bulk Import state
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkFiles, setBulkFiles] = useState([]);
+    const [bulkJobTitle, setBulkJobTitle] = useState('Software Engineer');
+    const [bulkSkills, setBulkSkills] = useState('python,javascript,react');
+    const [bulkImporting, setBulkImporting] = useState(false);
+    const [bulkProgress, setBulkProgress] = useState(0);
+    const [bulkResults, setBulkResults] = useState(null);
+    const [bulkError, setBulkError] = useState(null);
+    const fileInputRef = useRef(null);
+
     useEffect(() => {
         Promise.all([
             api.listCandidates().catch(() => ({ data: { candidates: [] } })),
             api.getDashboardAnalytics().catch(() => null),
         ]).then(([candsRes, statsRes]) => {
-            // Backend returns { total, candidates: [...] }
             const candList = candsRes?.data?.candidates ?? candsRes?.data ?? [];
             setCandidates(Array.isArray(candList) ? candList : []);
-            // Backend returns { success, metrics: { total_candidates, selected, rejected, ... } }
             setAnalytics(statsRes?.data ?? null);
             setLoading(false);
         });
     }, []);
 
-    const handleLogout = () => {
-        api.logout();
+    const reloadCandidates = async () => {
+        try {
+            const [candsRes, statsRes] = await Promise.all([
+                api.listCandidates().catch(() => ({ data: { candidates: [] } })),
+                api.getDashboardAnalytics().catch(() => null),
+            ]);
+            const candList = candsRes?.data?.candidates ?? candsRes?.data ?? [];
+            setCandidates(Array.isArray(candList) ? candList : []);
+            setAnalytics(statsRes?.data ?? null);
+        } catch {}
     };
+
+    const handleLogout = () => api.logout();
+
+    // ── Bulk Import ───────────────────────────────────────────────────────
+    const handleDrop = (e) => {
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files).filter(f =>
+            f.name.endsWith('.pdf') || f.name.endsWith('.docx') || f.name.endsWith('.doc')
+        );
+        setBulkFiles(prev => [...prev, ...files]);
+    };
+
+    const handleFileSelect = (e) => {
+        setBulkFiles(prev => [...prev, ...Array.from(e.target.files)]);
+        e.target.value = '';
+    };
+
+    const handleBulkImport = async () => {
+        if (bulkFiles.length === 0) return;
+        setBulkImporting(true);
+        setBulkProgress(0);
+        setBulkError(null);
+        setBulkResults(null);
+        try {
+            const res = await api.bulkAnalyzeResumes(
+                bulkFiles, bulkJobTitle, bulkSkills, '',
+                (p) => setBulkProgress(p)
+            );
+            setBulkResults(res.data);
+            await reloadCandidates();
+        } catch (err) {
+            setBulkError(err.response?.data?.detail || err.message || 'Bulk import failed. Make sure all files are valid PDFs.');
+        } finally {
+            setBulkImporting(false);
+        }
+    };
+
+    const closeBulkModal = () => {
+        setShowBulkModal(false);
+        setBulkFiles([]);
+        setBulkResults(null);
+        setBulkError(null);
+        setBulkProgress(0);
+    };
+    // ─────────────────────────────────────────────────────────────────────
 
     const filteredCandidates = candidates.filter(c => {
         const matchesSearch = !searchQuery ||
             c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.email?.toLowerCase().includes(searchQuery.toLowerCase());
-        // Backend uses 'outcome' field (HIRE / NO_HIRE / PENDING)
         const matchesStatus = statusFilter === 'all' ||
             c.outcome?.toLowerCase().replace('_', '') === statusFilter.toLowerCase().replace('_', '');
         return matchesSearch && matchesStatus;
     });
 
-    // Analytics shape: { metrics: { total_candidates, selected: {count}, rejected: {count}, avg_score } }
     const metrics = analytics?.metrics ?? {};
     const total = metrics.total_candidates ?? candidates.length;
     const hired = metrics.selected?.count ?? candidates.filter(c => c.outcome === 'HIRE').length;
@@ -69,6 +129,149 @@ export function DashboardMain() {
 
     return (
         <div className="bg-background text-on-background font-body min-h-screen">
+
+            {/* ── BULK IMPORT MODAL ── */}
+            {showBulkModal && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="bg-[#121318] border border-[#47474c]/30 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-[#47474c]/20">
+                            <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-[#ba9eff]">upload_file</span>
+                                <div>
+                                    <h2 className="font-bold text-white text-sm">Bulk Resume Import</h2>
+                                    <p className="text-[10px] text-[#75757a] font-label">AI-powered batch analysis — ranked by fit score</p>
+                                </div>
+                            </div>
+                            <button onClick={closeBulkModal} className="p-1.5 hover:bg-[#1e1f25] rounded-lg transition-colors text-[#75757a] hover:text-white">
+                                <span className="material-symbols-outlined text-lg">close</span>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-5">
+                            {bulkResults ? (
+                                /* ── Results ── */
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-[#4ade80]">
+                                        <span className="material-symbols-outlined">check_circle</span>
+                                        <span className="font-bold text-sm">{bulkResults.processed ?? bulkResults.candidates?.length ?? 0} resumes processed</span>
+                                    </div>
+                                    <div className="max-h-72 overflow-y-auto space-y-2">
+                                        {(bulkResults.candidates || [])
+                                            .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
+                                            .map((c, i) => (
+                                            <div key={c.id || i} className="flex items-center justify-between px-4 py-3 bg-[#1e1f25] rounded-xl border border-[#47474c]/20">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-mono font-bold text-[#75757a] w-5">#{i + 1}</span>
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-white">{c.name}</p>
+                                                        <p className="text-[10px] text-[#75757a] font-label">{c.filename}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`text-sm font-bold ${(c.match_score || 0) >= 70 ? 'text-[#4ade80]' : (c.match_score || 0) >= 40 ? 'text-amber-400' : 'text-[#ff6e84]'}`}>
+                                                        {Math.round(c.match_score || 0)}%
+                                                    </span>
+                                                    <button
+                                                        onClick={() => { closeBulkModal(); navigate(`/recruiter/${c.id}`); }}
+                                                        className="text-[10px] text-[#ba9eff] hover:text-white font-semibold px-2 py-1 rounded border border-[#ba9eff]/20 hover:bg-[#ba9eff]/10 transition-all"
+                                                    >
+                                                        View
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={closeBulkModal} className="w-full py-3 rounded-xl font-bold text-sm bg-[#ba9eff]/20 text-[#ba9eff] border border-[#ba9eff]/30 hover:bg-[#ba9eff]/30 transition-all">
+                                        Done — Return to Dashboard
+                                    </button>
+                                </div>
+                            ) : (
+                                /* ── Upload form ── */
+                                <>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-label text-[#75757a] uppercase tracking-widest block mb-1.5">Job Title</label>
+                                            <input value={bulkJobTitle} onChange={e => setBulkJobTitle(e.target.value)} disabled={bulkImporting}
+                                                className="w-full bg-[#1e1f25] border border-[#47474c]/30 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#47474c] focus:border-[#ba9eff]/50 outline-none transition-colors"
+                                                placeholder="e.g. Software Engineer" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-label text-[#75757a] uppercase tracking-widest block mb-1.5">Required Skills (comma-separated)</label>
+                                            <input value={bulkSkills} onChange={e => setBulkSkills(e.target.value)} disabled={bulkImporting}
+                                                className="w-full bg-[#1e1f25] border border-[#47474c]/30 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#47474c] focus:border-[#ba9eff]/50 outline-none transition-colors"
+                                                placeholder="python,react,sql" />
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        onDragOver={e => e.preventDefault()}
+                                        onDrop={handleDrop}
+                                        onClick={() => !bulkImporting && fileInputRef.current?.click()}
+                                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${bulkImporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer border-[#47474c]/40 hover:border-[#ba9eff]/50 hover:bg-[#ba9eff]/5'}`}
+                                    >
+                                        <span className="material-symbols-outlined text-4xl text-[#ba9eff]/60 block mb-3">cloud_upload</span>
+                                        <p className="text-sm font-semibold text-[#abaab0]">Drop resumes here or click to browse</p>
+                                        <p className="text-xs text-[#75757a] mt-1">PDF, DOCX supported · Multiple files allowed</p>
+                                        <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.doc" onChange={handleFileSelect} className="hidden" />
+                                    </div>
+
+                                    {bulkFiles.length > 0 && (
+                                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                            {bulkFiles.map((f, i) => (
+                                                <div key={i} className="flex items-center justify-between px-3 py-2 bg-[#1e1f25] rounded-lg">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-sm text-[#ba9eff]">description</span>
+                                                        <span className="text-xs text-[#abaab0] truncate max-w-xs">{f.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <span className="text-[10px] text-[#75757a]">{(f.size / 1024).toFixed(0)}KB</span>
+                                                        {!bulkImporting && (
+                                                            <button onClick={() => setBulkFiles(prev => prev.filter((_, j) => j !== i))} className="text-[#75757a] hover:text-[#ff6e84] transition-colors">
+                                                                <span className="material-symbols-outlined text-sm">close</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {bulkError && (
+                                        <div className="px-4 py-3 bg-[#ff6e84]/10 border border-[#ff6e84]/30 rounded-xl text-xs text-[#ff6e84] flex items-start gap-2">
+                                            <span className="material-symbols-outlined text-sm flex-shrink-0">error</span>
+                                            {bulkError}
+                                        </div>
+                                    )}
+
+                                    {bulkImporting && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-[#abaab0] font-label">Processing {bulkFiles.length} resumes with AI...</span>
+                                                <span className="text-[#ba9eff] font-bold">{bulkProgress}%</span>
+                                            </div>
+                                            <div className="h-1.5 bg-[#1e1f25] rounded-full overflow-hidden">
+                                                <div className="h-full bg-gradient-to-r from-[#ba9eff] to-[#8455ef] rounded-full transition-all duration-300" style={{ width: `${bulkProgress}%` }} />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleBulkImport}
+                                        disabled={bulkFiles.length === 0 || bulkImporting}
+                                        className="w-full py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-[#ba9eff] to-[#8455ef] text-[#39008c] hover:brightness-110 active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {bulkImporting
+                                            ? <><div className="w-4 h-4 border-2 border-[#39008c] border-t-transparent rounded-full animate-spin" /> Analyzing {bulkFiles.length} resumes...</>
+                                            : <><span className="material-symbols-outlined text-sm">auto_awesome</span>Run AI Analysis ({bulkFiles.length} file{bulkFiles.length !== 1 ? 's' : ''})</>
+                                        }
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* TopNavBar */}
             <header className="fixed top-0 w-full z-50 bg-[#0A0B0F]/70 backdrop-blur-xl shadow-2xl shadow-black/50">
                 <div className="flex justify-between items-center px-8 py-4 max-w-[1440px] mx-auto w-full">
@@ -86,13 +289,11 @@ export function DashboardMain() {
                         <span className="text-sm text-slate-400 font-label hidden md:block">
                             Welcome, <span className="text-primary font-medium">{localStorage.getItem('name') || 'Recruiter'}</span>
                         </span>
-                        <button
-                            onClick={handleLogout}
-                            className="bg-white/5 hover:bg-white/10 text-slate-100 px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-95"
-                        >
+                        <button onClick={handleLogout} className="bg-white/5 hover:bg-white/10 text-slate-100 px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-95">
                             Logout
                         </button>
-                        <button className="bg-primary-container text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-95">
+                        <button onClick={() => setShowBulkModal(true)} className="bg-primary-container text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-95 flex items-center gap-2 hover:brightness-110">
+                            <span className="material-symbols-outlined text-sm">upload_file</span>
                             Bulk Import
                         </button>
                     </div>
@@ -127,18 +328,10 @@ export function DashboardMain() {
                             <button className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">Settings</button>
                         </div>
                     </div>
-                    {/* Job Role Tabs */}
                     <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 border-b border-outline-variant/10">
                         {tabs.map(t => (
-                            <button
-                                key={t}
-                                onClick={() => setActiveTab(t)}
-                                className={`whitespace-nowrap px-4 py-2 text-sm transition-colors ${
-                                    activeTab === t
-                                        ? 'font-semibold text-primary border-b-2 border-primary'
-                                        : 'font-medium text-slate-400 hover:text-white'
-                                }`}
-                            >
+                            <button key={t} onClick={() => setActiveTab(t)}
+                                className={`whitespace-nowrap px-4 py-2 text-sm transition-colors ${activeTab === t ? 'font-semibold text-primary border-b-2 border-primary' : 'font-medium text-slate-400 hover:text-white'}`}>
                                 {t}
                             </button>
                         ))}
@@ -203,11 +396,9 @@ export function DashboardMain() {
 
                 {/* Charts Row */}
                 <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Donut */}
                     <div className="lg:col-span-1 glass-panel p-6 rounded-2xl space-y-6">
                         <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 font-label flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                            Decision Distribution
+                            <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>Decision Distribution
                         </h3>
                         <div className="relative w-48 h-48 mx-auto">
                             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
@@ -222,22 +413,11 @@ export function DashboardMain() {
                             </div>
                         </div>
                         <div className="grid gap-2">
-                            <div className="flex justify-between items-center text-xs">
-                                <div className="flex items-center gap-2 text-slate-300"><span className="w-2 h-2 rounded-full bg-secondary"></span> Selected</div>
-                                <span className="font-label text-secondary">{hireRate}%</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                                <div className="flex items-center gap-2 text-slate-300"><span className="w-2 h-2 rounded-full bg-tertiary"></span> Rejected</div>
-                                <span className="font-label text-tertiary">{rejectRate}%</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                                <div className="flex items-center gap-2 text-slate-300"><span className="w-2 h-2 rounded-full bg-[#ffca28]"></span> Pending</div>
-                                <span className="font-label text-[#ffca28]">{100 - hireRate - rejectRate}%</span>
-                            </div>
+                            <div className="flex justify-between items-center text-xs"><div className="flex items-center gap-2 text-slate-300"><span className="w-2 h-2 rounded-full bg-secondary"></span> Selected</div><span className="font-label text-secondary">{hireRate}%</span></div>
+                            <div className="flex justify-between items-center text-xs"><div className="flex items-center gap-2 text-slate-300"><span className="w-2 h-2 rounded-full bg-tertiary"></span> Rejected</div><span className="font-label text-tertiary">{rejectRate}%</span></div>
+                            <div className="flex justify-between items-center text-xs"><div className="flex items-center gap-2 text-slate-300"><span className="w-2 h-2 rounded-full bg-[#ffca28]"></span> Pending</div><span className="font-label text-[#ffca28]">{100 - hireRate - rejectRate}%</span></div>
                         </div>
                     </div>
-
-                    {/* Bar Chart */}
                     <div className="lg:col-span-2 glass-panel p-6 rounded-2xl space-y-6">
                         <div className="flex justify-between items-center">
                             <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 font-label">Candidates by Role</h3>
@@ -269,20 +449,13 @@ export function DashboardMain() {
                 <section className="glass-panel p-4 rounded-xl flex flex-col md:flex-row gap-4 items-center">
                     <div className="flex-1 relative w-full">
                         <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">search</span>
-                        <input
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                        <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full bg-surface-container-low border-none rounded-lg pl-10 text-sm focus:ring-1 focus:ring-primary/40 placeholder:text-slate-600 py-2"
-                            placeholder="Search forensic records..."
-                            type="text"
-                        />
+                            placeholder="Search forensic records..." type="text" />
                     </div>
                     <div className="flex gap-4 w-full md:w-auto">
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-surface-container-low border-none rounded-lg text-sm text-slate-300 focus:ring-1 focus:ring-primary/40 min-w-[140px] py-2 px-3"
-                        >
+                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-surface-container-low border-none rounded-lg text-sm text-slate-300 focus:ring-1 focus:ring-primary/40 min-w-[140px] py-2 px-3">
                             <option value="all">All Status</option>
                             <option value="auto_hire">Hired</option>
                             <option value="conditional">Conditional</option>
@@ -318,6 +491,9 @@ export function DashboardMain() {
                                                 <span className="material-symbols-outlined text-5xl text-slate-600">manage_search</span>
                                                 <p className="text-slate-400 font-label text-xs uppercase tracking-widest">No candidates found</p>
                                                 <p className="text-slate-500 text-xs">Upload resumes or create assessments to get started</p>
+                                                <button onClick={() => setShowBulkModal(true)} className="mt-2 px-4 py-2 text-xs font-semibold text-[#ba9eff] border border-[#ba9eff]/30 rounded-lg hover:bg-[#ba9eff]/10 transition-all flex items-center gap-1.5">
+                                                    <span className="material-symbols-outlined text-sm">upload_file</span>Import Resumes
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -334,7 +510,6 @@ export function DashboardMain() {
                                                 </div>
                                             </div>
                                         </td>
-                                        {/* job_title from the backend summary */}
                                         <td className="p-4 text-sm text-slate-300">{c.job_title || '—'}</td>
                                         <td className="p-4">
                                             <div className="flex items-center gap-2">
@@ -345,13 +520,9 @@ export function DashboardMain() {
                                             </div>
                                         </td>
                                         <td className="p-4">{getIntegrityChip(c.integrity_score ?? 75)}</td>
-                                        {/* outcome from backend (HIRE / NO_HIRE / PENDING / CONDITIONAL) */}
                                         <td className="p-4">{getVerdictChip(c.outcome)}</td>
                                         <td className="p-4">
-                                            <button
-                                                onClick={() => navigate(`/recruiter/${c.id}`)}
-                                                className="text-primary hover:bg-primary/10 px-3 py-1 rounded text-xs font-semibold transition-colors"
-                                            >
+                                            <button onClick={() => navigate(`/recruiter/${c.id}`)} className="text-primary hover:bg-primary/10 px-3 py-1 rounded text-xs font-semibold transition-colors">
                                                 View
                                             </button>
                                         </td>
@@ -374,7 +545,6 @@ export function DashboardMain() {
                 </section>
             </main>
 
-            {/* Footer */}
             <footer className="w-full py-12 border-t border-[#464554]/10 bg-[#0A0B0F]">
                 <div className="flex flex-col md:flex-row justify-between items-center px-12 max-w-[1440px] mx-auto w-full gap-8">
                     <div className="flex flex-col items-center md:items-start gap-4">
@@ -392,3 +562,5 @@ export function DashboardMain() {
         </div>
     );
 }
+
+export default DashboardMain;
