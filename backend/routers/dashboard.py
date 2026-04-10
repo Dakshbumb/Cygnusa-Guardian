@@ -1,8 +1,7 @@
 """
 Dashboard & Management Router
 
-Recruiter-facing analytics, candidate browsing, bulk actions,
-interview scheduling, notes, and demo data seeding.
+Recruiter-facing analytics, candidate browsing, bulk actions, and notes.
 
 Endpoints:
   GET   /api/dashboard/live                - Real-time active session feed
@@ -10,10 +9,6 @@ Endpoints:
   GET   /api/dashboard/candidates-by-role  - Candidates grouped by role
   PATCH /api/candidates/bulk-update        - Bulk status updates
   POST  /api/candidates/{id}/notes         - Add recruiter note
-  POST  /api/demo/seed                     - Seed demo data
-  POST  /api/interviews/schedule           - Schedule interview
-  GET   /api/interviews/{id}               - Get candidate interviews
-  GET   /api/interviews/upcoming           - List upcoming interviews
 """
 
 import os
@@ -36,25 +31,7 @@ logger = logging.getLogger("cygnusa-api")
 router = APIRouter(tags=["Dashboard & Management"])
 
 
-# ============================================================
-# In-memory stores (demo only – would use DB in production)
-# ============================================================
 
-interview_schedules: dict = {}
-"""interview_id → schedule dict."""
-
-
-# ============================================================
-# Pydantic request models
-# ============================================================
-
-class InterviewScheduleRequest(PydanticBaseModel):
-    candidate_id: str
-    scheduled_date: str
-    scheduled_time: str
-    interview_type: str = "video"
-    notes: str = ""
-    round: str = "second"
 
 
 # ============================================================
@@ -351,89 +328,3 @@ async def add_recruiter_note(candidate_id: str, request: Request, recruiter: dic
         raise HTTPException(status_code=500, detail=f"Failed to add note: {e}")
 
 
-# ============================================================
-# Demo seed
-# ============================================================
-
-@router.post("/api/demo/seed")
-async def seed_demo():
-    """Seed the database with demo users and candidates. DEV ONLY."""
-    env = os.getenv("ENV", "development")
-    if env == "production":
-        raise HTTPException(
-            status_code=403,
-            detail="Demo seeding is disabled in production."
-        )
-    try:
-        from seed_demo_data import seed_all_demos
-        from decision_engine import ExplainableDecisionEngine
-        fallback_engine = ExplainableDecisionEngine(use_gemini=False)
-        results = seed_all_demos(db, fallback_engine)
-        logger.info(f"Database seeded with {len(results)} candidates")
-        return {"success": True, "message": f"Seeded {len(results)} candidates and demo users", "candidates": results}
-    except Exception as e:
-        logger.error(f"Seeding failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Seeding failed: {e}")
-
-
-# ============================================================
-# Interview scheduling
-# ============================================================
-
-@router.post("/api/interviews/schedule")
-async def schedule_interview(data: InterviewScheduleRequest, recruiter: dict = Depends(require_recruiter)):
-    """Schedule a Round 2 interview for HIRE/CONDITIONAL candidates with ≥ 50% score."""
-    try:
-        candidate = db.get_candidate(data.candidate_id)
-        if not candidate:
-            raise HTTPException(status_code=404, detail="Candidate not found")
-
-        outcome = candidate.final_decision.outcome if candidate.final_decision else "PENDING"
-        score = candidate.resume_evidence.match_score if candidate.resume_evidence else 0
-
-        if outcome not in ["HIRE", "CONDITIONAL"]:
-            raise HTTPException(status_code=400, detail="Only Selected or Conditional candidates can be scheduled")
-        if score < 50:
-            raise HTTPException(status_code=400, detail="Candidate must have 50%+ match score for Round 2")
-
-        schedule_id = str(uuid.uuid4())
-        schedule = {
-            "id": schedule_id,
-            "candidate_id": data.candidate_id,
-            "candidate_name": candidate.name,
-            "candidate_email": candidate.email,
-            "scheduled_date": data.scheduled_date,
-            "scheduled_time": data.scheduled_time,
-            "interview_type": data.interview_type,
-            "notes": data.notes,
-            "round": data.round,
-            "scheduled_by": recruiter.get("email", "recruiter"),
-            "created_at": datetime.now().isoformat(),
-            "status": "scheduled",
-        }
-        interview_schedules[schedule_id] = schedule
-
-        return {"success": True, "message": f"Interview scheduled for {data.scheduled_date} at {data.scheduled_time}", "schedule": schedule}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Interview scheduling failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/api/interviews/{candidate_id}")
-async def get_candidate_interviews(candidate_id: str, recruiter: dict = Depends(require_recruiter)):
-    """Get all scheduled interviews for a specific candidate."""
-    schedules = [s for s in interview_schedules.values() if s["candidate_id"] == candidate_id]
-    return {"success": True, "schedules": schedules}
-
-
-@router.get("/api/interviews/upcoming")
-async def get_upcoming_interviews(recruiter: dict = Depends(require_recruiter)):
-    """List all upcoming interviews sorted chronologically."""
-    today = datetime.now().date().isoformat()
-    upcoming = sorted(
-        [s for s in interview_schedules.values() if s["scheduled_date"] >= today and s["status"] == "scheduled"],
-        key=lambda x: (x["scheduled_date"], x["scheduled_time"]),
-    )
-    return {"success": True, "interviews": upcoming}

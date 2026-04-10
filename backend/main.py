@@ -29,17 +29,23 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+ENV = os.getenv("ENV", "development")
+
+# Production: stdout only (Render FS is ephemeral).
+# Development: also log to file.
+_handlers = [logging.StreamHandler()]
+if ENV != "production":
+    try:
+        _handlers.append(logging.FileHandler("cygnusa_guardian.log"))
+    except OSError:
+        pass  # gracefully skip if filesystem is read-only
+
 logging.basicConfig(
     level=LOG_LEVEL,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("cygnusa_guardian.log"),
-    ],
+    handlers=_handlers,
 )
 logger = logging.getLogger("cygnusa-api")
-
-ENV = os.getenv("ENV", "development")
 
 # ---------------------------------------------------------------------------
 # Application factory
@@ -57,14 +63,20 @@ app = FastAPI(
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
+# Build CORS origins list — static + dynamic from env
+_cors_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://cygnusa-guardian.vercel.app",
+    "https://cygnusa-guardian-one.vercel.app",
+]
+_frontend_url = os.getenv("FRONTEND_URL")
+if _frontend_url and _frontend_url not in _cors_origins:
+    _cors_origins.append(_frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://cygnusa-guardian.vercel.app",
-        "https://cygnusa-guardian-one.vercel.app",
-    ],
+    allow_origins=_cors_origins,
     allow_origin_regex=r"https://cygnusa-guardian.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],

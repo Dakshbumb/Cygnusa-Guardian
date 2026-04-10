@@ -18,7 +18,7 @@ load_dotenv()
 # Configuration
 # ---------------------------------------------------------------------------
 
-SECRET_KEY = os.getenv("JWT_SECRET", "cygnusa-guardian-dev-secret-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET", "cygnusa-guardian-dev-secret-change-in-production")
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_HOURS = 24
 

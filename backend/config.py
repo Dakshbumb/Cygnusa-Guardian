@@ -54,7 +54,7 @@ class Settings:
     # ===========================================
     # Security Settings
     # ===========================================
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "cygnusa-guardian-dev-secret-change-in-production")
+    JWT_SECRET: str = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET", "cygnusa-guardian-dev-secret-change-in-production")
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRY_HOURS: int = int(os.getenv("JWT_EXPIRY_HOURS", "24"))
     
