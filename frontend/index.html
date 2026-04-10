@@ -13,9 +13,56 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;700&display=swap"
     rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js"
-    crossorigin="anonymous"></script>
+
+  <!--
+    MediaPipe Face Detection — version pinned for production stability.
+    Primary CDN: unpkg (Cloudflare-backed, highly available).
+    Fallback CDN: jsDelivr.
+    If both fail, IntegrityMonitor falls back to the native browser FaceDetector API
+    or graceful degradation mode — assessment continues without blocking the candidate.
+  -->
+  <script>
+    (function () {
+      const MEDIAPIPE_VERSION = '0.4.1646425229';
+      const FILES = [
+        `https://unpkg.com/@mediapipe/camera_utils@${MEDIAPIPE_VERSION}/camera_utils.js`,
+        `https://unpkg.com/@mediapipe/face_detection@${MEDIAPIPE_VERSION}/face_detection.js`,
+      ];
+      const FALLBACK = [
+        `https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@${MEDIAPIPE_VERSION}/camera_utils.js`,
+        `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@${MEDIAPIPE_VERSION}/face_detection.js`,
+      ];
+
+      let loaded = 0;
+      const total = FILES.length;
+
+      function loadScript(src, fallbackSrc, attempt) {
+        const s = document.createElement('script');
+        s.src = src;
+        s.crossOrigin = 'anonymous';
+        s.async = false;
+        s.onerror = function () {
+          if (attempt === 1 && fallbackSrc) {
+            console.warn('[MediaPipe] Primary CDN failed, trying fallback:', fallbackSrc);
+            loadScript(fallbackSrc, null, 2);
+          } else {
+            console.warn('[MediaPipe] Both CDNs failed. Face detection will use browser native API or graceful fallback.');
+            window.__mediapipeFailed = true;
+          }
+        };
+        s.onload = function () {
+          loaded++;
+          if (loaded === total) {
+            console.info('[MediaPipe] All modules loaded successfully from CDN.');
+            window.__mediapipeReady = true;
+          }
+        };
+        document.head.appendChild(s);
+      }
+
+      FILES.forEach((src, i) => loadScript(src, FALLBACK[i], 1));
+    })();
+  </script>
 </head>
 
 <body>

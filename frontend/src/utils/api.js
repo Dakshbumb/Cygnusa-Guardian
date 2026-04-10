@@ -332,8 +332,10 @@ export const api = {
         return http.delete(`/report/share/${shareToken}`);
     },
 
-    // ==================== Demo ====================
-    seedDemo: () => http.post('/demo/seed'),
+    // ==================== Magic Link Authentication ====================
+    sendMagicLink: (candidateId, candidateEmail, candidateName) =>
+        http.post('/auth/magic-link', { candidate_id: candidateId, candidate_email: candidateEmail, candidate_name: candidateName }),
+    verifyMagicLink: (token) => http.get(`/auth/verify-magic/${token}`),
 
     // ==================== Dashboard Analytics ====================
     getDashboardAnalytics: () => http.get('/dashboard/analytics'),

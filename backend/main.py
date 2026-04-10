@@ -160,6 +160,8 @@ from routers.assessment import router as assessment_router  # noqa: E402
 from routers.integrity import router as integrity_router  # noqa: E402
 from routers.reports import router as reports_router  # noqa: E402
 from routers.dashboard import router as dashboard_router  # noqa: E402
+from routers.magic_link import router as magic_link_router  # noqa: E402
+from routers.interviews import router as interviews_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(candidates_router)
@@ -168,6 +170,8 @@ app.include_router(assessment_router)
 app.include_router(integrity_router)
 app.include_router(reports_router)
 app.include_router(dashboard_router)
+app.include_router(magic_link_router)
+app.include_router(interviews_router)
 
 # ---------------------------------------------------------------------------
 # Global exception handler

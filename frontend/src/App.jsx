@@ -15,6 +15,7 @@ const SharedReportPage = lazy(() => import('./pages/SharedReportPage'));
 const LiveMonitorPage = lazy(() => import('./pages/LiveMonitorPage').then(m => ({ default: m.LiveMonitorPage })));
 const DashboardMain = lazy(() => import('./pages/DashboardMain').then(m => ({ default: m.DashboardMain })));
 const BulkCandidateDetail = lazy(() => import('./pages/BulkCandidateDetail').then(m => ({ default: m.BulkCandidateDetail })));
+const MagicVerifyPage = lazy(() => import('./pages/MagicVerifyPage').then(m => ({ default: m.MagicVerifyPage })));
 
 // Fast loading spinner component
 function PageLoader() {
@@ -56,6 +57,13 @@ function App() {
                                 <ResumeAnalysisPage />
                             </PageTransition>
                         </ProtectedRoute>
+                    } />
+
+                    {/* Magic Link verification — candidate clicks email link */}
+                    <Route path="/assess/:token" element={
+                        <PageTransition>
+                            <MagicVerifyPage />
+                        </PageTransition>
                     } />
 
                     {/* Candidate Assessment Flow (Public - magic link access) */}
