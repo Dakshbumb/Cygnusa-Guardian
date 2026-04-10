@@ -69,6 +69,7 @@ _cors_origins = [
     "http://localhost:3000",
     "https://cygnusa-guardian.vercel.app",
     "https://cygnusa-guardian-one.vercel.app",
+    "https://cygnusa-guardiann.vercel.app",   # double-n variant
 ]
 _frontend_url = os.getenv("FRONTEND_URL")
 if _frontend_url and _frontend_url not in _cors_origins:
