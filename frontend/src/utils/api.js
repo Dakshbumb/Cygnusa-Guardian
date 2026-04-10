@@ -27,7 +27,7 @@ const http = axios.create({
     headers: {
         'Content-Type': 'application/json'
     },
-    timeout: 30000, // 30 second timeout
+    timeout: 60000, // 60 second timeout (Render free tier cold starts take 30-60s)
 });
 
 // Simple in-memory cache for GET requests

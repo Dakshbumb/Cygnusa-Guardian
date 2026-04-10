@@ -108,29 +108,31 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
             if (lastLog && (new Date() - new Date(lastLog.timestamp)) < 60000) return;
         }
 
-        try {
-            await api.logIntegrity(candidateId, eventType, severity, context);
-            const newViolation = { eventType, severity, context, timestamp: new Date().toISOString() };
+        // ALWAYS update local state immediately — never wait for API
+        const newViolation = { eventType, severity, context, timestamp: new Date().toISOString() };
 
-            setViolations(prev => {
-                const updated = [...prev, newViolation];
-                if (updated.length >= 100) {
-                    setIsLocked(true);
-                    setLockdownReason('INTEGRITY_THRESHOLD_EXCEEDED');
-                }
-                return updated;
-            });
-
-            if (severity === 'high' || severity === 'critical') {
-                captureSnapshotRef.current?.(eventType.includes('face'));
+        setViolations(prev => {
+            const updated = [...prev, newViolation];
+            if (updated.length >= 100) {
+                setIsLocked(true);
+                setLockdownReason('INTEGRITY_THRESHOLD_EXCEEDED');
             }
+            return updated;
+        });
 
-            if (onViolationRef.current) {
-                onViolationRef.current(newViolation);
-            }
-        } catch (error) {
-            console.error('Failed to log integrity event:', error);
+        if (severity === 'high' || severity === 'critical') {
+            captureSnapshotRef.current?.(eventType.includes('face'));
         }
+
+        // Notify parent component IMMEDIATELY (real-time status bar)
+        if (onViolationRef.current) {
+            onViolationRef.current(newViolation);
+        }
+
+        // Fire API call in background — never block UI on backend latency
+        api.logIntegrity(candidateId, eventType, severity, context).catch(err => {
+            console.warn('Background integrity log failed (non-blocking):', err.message);
+        });
     }, [candidateId, isLocked, violations]); // Keep violations to ensure filtering works correctly
 
     // Update the ref
@@ -713,9 +715,14 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
             }
         };
 
+        let lastBlurLogTime = 0;
         const handleBlur = () => {
-            // Side-Assistant Detection: If focus is lost, suggest interaction outside
-            logViolationRef.current?.('environment_focus_lost', 'medium', 'Interaction with browser sidebar or external app suspected');
+            const now = Date.now();
+            // Only log blur once every 10 seconds to avoid flooding
+            if (now - lastBlurLogTime > 10000) {
+                lastBlurLogTime = now;
+                logViolationRef.current?.('environment_focus_lost', 'medium', 'Interaction with browser sidebar or external app suspected');
+            }
         };
 
         // Typing Burst Detection - catches suspicious rapid text input from external sources
@@ -750,11 +757,16 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
         };
 
         // Step 2: Fullscreen Protocol
+        let wasEverFullscreen = false;
         const enforceFullscreen = () => {
             if (!document.fullscreenElement) {
                 setIsFullscreen(false);
-                logViolationRef.current?.('security_protocol_exit', 'high', 'User exited fullscreen mode');
+                // Only log violation if they were in fullscreen and actively exited
+                if (wasEverFullscreen) {
+                    logViolationRef.current?.('security_protocol_exit', 'high', 'User exited fullscreen mode');
+                }
             } else {
+                wasEverFullscreen = true;
                 setIsFullscreen(true);
             }
         };
@@ -837,17 +849,18 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center"
+                        className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-8 text-center"
+                        style={{ backgroundColor: 'rgba(0,0,0,0.97)', backdropFilter: 'blur(20px)' }}
                     >
                         <div className="max-w-md">
-                            <ShieldAlert className="text-danger-500 mb-6 mx-auto" size={80} />
-                            <h2 className="text-3xl font-display font-bold text-white mb-4 uppercase tracking-tighter">
-                                {isLocked ? 'ASSESSMENT_SUSPENDED' : 'SECURITY_PROTOCOL_REVOKED'}
+                            <ShieldAlert style={{ color: '#ff6e84' }} className="mb-6 mx-auto" size={80} />
+                            <h2 className="text-3xl font-bold text-white mb-4 uppercase tracking-tighter">
+                                {isLocked ? 'ASSESSMENT SUSPENDED' : 'FULLSCREEN REQUIRED'}
                             </h2>
-                            <p className="text-neutral-400 font-mono text-sm mb-8 leading-relaxed">
+                            <p className="text-[#abaab0] text-sm mb-8 leading-relaxed" style={{ fontFamily: 'monospace' }}>
                                 {isLocked
-                                    ? `Integrity threshold of 100 violations has been exceeded. This assessment is now moved to LOCKDOWN mode. Manual intervention is required.`
-                                    : `Assessment protocol requires active FULLSCREEN mode to ensure environment integrity. Browser access has been restricted until re-entry.`
+                                    ? `Integrity threshold of 100 violations has been exceeded. This assessment is now in LOCKDOWN mode.`
+                                    : `This assessment requires FULLSCREEN mode for environment integrity. Click the button below to enter fullscreen and continue.`
                                 }
                             </p>
 
@@ -855,15 +868,43 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                                 <motion.button
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
-                                    onClick={() => document.documentElement.requestFullscreen()}
-                                    className="px-8 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-mono font-bold tracking-widest transition-all shadow-lg shadow-primary-500/20"
+                                    onClick={async () => {
+                                        try {
+                                            await document.documentElement.requestFullscreen();
+                                            setIsFullscreen(true);
+                                        } catch (err) {
+                                            console.warn('Fullscreen failed:', err);
+                                            // If fullscreen fails (e.g. iframe), allow assessment anyway
+                                            setIsFullscreen(true);
+                                        }
+                                    }}
+                                    style={{
+                                        background: 'linear-gradient(135deg, #ba9eff, #8455ef)',
+                                        color: '#fff',
+                                        padding: '14px 40px',
+                                        borderRadius: '12px',
+                                        fontWeight: 'bold',
+                                        fontSize: '14px',
+                                        letterSpacing: '2px',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 4px 30px rgba(186,158,255,0.3)',
+                                    }}
                                 >
-                                    RE-ENTER_FULLSCREEN
+                                    ENTER FULLSCREEN
                                 </motion.button>
                             )}
 
                             {isLocked && (
-                                <div className="p-4 border border-danger-500/30 bg-danger-500/10 rounded font-mono text-xs text-danger-400">
+                                <div style={{
+                                    padding: '16px',
+                                    border: '1px solid rgba(255,110,132,0.3)',
+                                    background: 'rgba(255,110,132,0.1)',
+                                    borderRadius: '8px',
+                                    fontFamily: 'monospace',
+                                    fontSize: '11px',
+                                    color: '#ff6e84',
+                                }}>
                                     REF_ID: {candidateId?.toUpperCase()} | STATUS: {lockdownReason}
                                 </div>
                             )}
