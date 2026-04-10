@@ -344,10 +344,22 @@ export function CandidateFlow() {
 
     const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
-    return (
-        <div className="min-h-screen bg-background text-on-surface font-body flex flex-col">
+    // Section order
+    const sectionOrder = requiresCoding
+        ? ['coding', 'mcq', 'text', 'claims', 'psychometric']
+        : ['mcq', 'text', 'claims', 'psychometric'];
+    const sidebarSections = [
+        ...(requiresCoding ? [{ id: 'coding', icon: 'terminal', label: 'Coding Challenge' }] : []),
+        { id: 'mcq', icon: 'quiz', label: 'Technical MCQ' },
+        { id: 'text', icon: 'edit_note', label: 'Reasoning Test' },
+        { id: 'claims', icon: 'fact_check', label: 'Claim Verify' },
+        { id: 'psychometric', icon: 'psychology', label: 'Psychometric' },
+    ];
 
-            {/* Shadow Deep Probe Overlay */}
+    return (
+        <div className="min-h-screen bg-[#0d0e12] text-[#f2f0f6] font-body flex flex-col">
+
+            {/* Overlays — keep existing */}
             {activeProbe && (
                 <ShadowProber
                     candidateId={candidateId}
@@ -356,8 +368,6 @@ export function CandidateFlow() {
                     onComplete={() => setActiveProbe(null)}
                 />
             )}
-
-            {/* Resume Claim Verification Overlay */}
             {showClaimProber && (
                 <ClaimProber
                     candidateId={candidateId}
@@ -368,125 +378,91 @@ export function CandidateFlow() {
                     }}
                 />
             )}
-
-            {/* Assessment Monitoring (only for candidates, never recruiters) */}
             {currentSection !== 'complete' && assessment && localStorage.getItem('role') !== 'recruiter' && (
                 <>
-                    <IntegrityMonitor
-                        candidateId={candidateId}
-                        onViolationUpdate={(count) => setViolationCount(count)}
-                    />
+                    <IntegrityMonitor candidateId={candidateId} onViolationUpdate={(count) => setViolationCount(count)} />
                     <div className="fixed bottom-4 right-4 z-50">
-                        <WebcamProctor
-                            candidateId={candidateId}
-                            captureInterval={30000}
-                            onStatusChange={(status) => console.log('Webcam status:', status)}
-                        />
+                        <WebcamProctor candidateId={candidateId} captureInterval={30000} onStatusChange={(s) => console.log('Webcam:', s)} />
                     </div>
                 </>
             )}
 
-            {/* Obsidian Assessment Header */}
-            <header className="bg-[#0A0B0F]/90 border-b border-outline-variant/10 sticky top-0 z-40 backdrop-blur-xl">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-                                <span className="text-primary font-label font-bold text-lg">CG</span>
-                            </div>
-                            <div>
-                                <h1 className="font-headline font-bold text-lg text-white">Cygnusa Assessment</h1>
-                                <div className="flex items-center gap-2 text-xs font-label text-primary/70">
-                                    <span>ID: {assessment?.id?.slice(0, 8) || 'UNK'}</span>
-                                    <span>•</span>
-                                    <span>SUBJECT: {assessment?.candidate_name?.toUpperCase()}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-6">
-                            {/* Step Stepper */}
-                            <div className="hidden md:flex items-center bg-surface-container-low border border-outline-variant/10 rounded-xl px-3 py-2 gap-1">
-                                {[
-                                    ...(requiresCoding ? [{ id: 'coding', icon: Code, label: 'CODE', step: 1 }] : []),
-                                    { id: 'mcq', icon: MessageSquare, label: 'MCQ', step: requiresCoding ? 2 : 1 },
-                                    { id: 'text', icon: FileText, label: 'TEXT', step: requiresCoding ? 3 : 2 },
-                                    { id: 'claims', icon: Check, label: 'VERIFY', step: requiresCoding ? 4 : 3 },
-                                    { id: 'psychometric', icon: SlidersHorizontal, label: 'PROFILE', step: requiresCoding ? 5 : 4 },
-                                ].map((section, i, arr) => {
-                                    const isActive = currentSection === section.id;
-                                    const isCompleted = completedSections[section.id];
-                                    const sectionOrder = requiresCoding
-                                        ? ['coding', 'mcq', 'text', 'claims', 'psychometric']
-                                        : ['mcq', 'text', 'claims', 'psychometric'];
-                                    const currentSectionIndex = sectionOrder.indexOf(currentSection);
-                                    const thisSectionIndex = sectionOrder.indexOf(section.id);
-                                    const isPast = thisSectionIndex < currentSectionIndex;
-
-                                    return (
-                                        <div key={section.id} className="flex items-center">
-                                            <div className="flex flex-col items-center gap-0.5">
-                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-label font-bold border-2 transition-all duration-300 ${
-                                                    isCompleted || isPast
-                                                        ? 'bg-secondary border-secondary/40 text-on-secondary'
-                                                        : isActive
-                                                            ? 'bg-primary-container border-primary/40 text-white animate-pulse-slow'
-                                                            : 'bg-surface-container-high border-outline-variant/20 text-on-surface-variant'
-                                                }`}>
-                                                    {isCompleted || isPast ? <Check size={12} className="stroke-[3]" /> : section.step}
-                                                </div>
-                                                <span className={`text-[8px] font-label tracking-tight ${
-                                                    isActive ? 'text-primary' : isCompleted || isPast ? 'text-secondary' : 'text-on-surface-variant/40'
-                                                }`}>{section.label}</span>
-                                            </div>
-                                            {i < arr.length - 1 && (
-                                                <div className={`w-5 h-0.5 mx-1 transition-all duration-500 ${
-                                                    completedSections[section.id] || isPast ? 'bg-secondary' : 'bg-outline-variant/20'
-                                                }`} />
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Timer */}
-                            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-label font-bold transition-all ${
-                                timeLeft < 300
-                                    ? 'bg-tertiary/10 border-tertiary/30 text-tertiary animate-pulse'
-                                    : 'bg-surface-container-low border-outline-variant/20 text-primary'
-                            }`}>
-                                <Timer size={16} />
-                                <span className="text-lg tracking-widest">{formatTime(timeLeft)}</span>
-                            </div>
-                        </div>
+            {/* ── TOP NAVBAR ── */}
+            <header className="bg-[#0d0e12]/90 border-b border-[#47474c]/20 sticky top-0 z-40 backdrop-blur-xl">
+                {/* Anti-cheat status bar */}
+                <div className="bg-[#121318] border-b border-[#47474c]/20 px-8 py-1.5 flex items-center gap-6 text-[10px] font-label uppercase tracking-widest">
+                    <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="w-1.5 h-1.5 rounded-full bg-[#4ade80]"></span>Webcam Active</div>
+                    <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="material-symbols-outlined text-xs">shield</span>Tab Switches: {violationCount}</div>
+                    <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="material-symbols-outlined text-xs">block</span>Copy-Paste: BLOCKED</div>
+                    <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="material-symbols-outlined text-xs">verified_user</span>Integrity: NOMINAL</div>
+                    <div className="ml-auto text-[#75757a] font-mono text-[9px]">SESSION: {candidateId?.slice(0, 16)}...</div>
+                </div>
+                <div className="max-w-[1440px] mx-auto px-8 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-[#ba9eff]">shield</span>
+                        <span className="font-bold tracking-tight">Cygnusa Guardian</span>
+                        <span className="text-[#47474c] text-sm">|</span>
+                        <span className="text-xs text-[#abaab0] font-label">{assessment?.candidate_name}</span>
                     </div>
-
-                    {/* Progress bar */}
-                    <div className="w-full bg-surface-container-lowest rounded-full h-1 overflow-hidden">
-                        <div
-                            className="bg-gradient-to-r from-primary-container to-primary h-full transition-all duration-500 ease-out shadow-lg shadow-primary/20"
-                            style={{ width: `${progressPercent}%` }}
-                        />
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-label font-bold text-lg tracking-widest transition-all ${
+                        timeLeft < 300 ? 'bg-[#ff6e84]/10 border-[#ff6e84]/30 text-[#ff6e84] animate-pulse' : 'bg-[#121318] border-[#47474c]/30 text-[#ba9eff]'
+                    }`}>
+                        <span className="material-symbols-outlined text-sm">timer</span>
+                        {formatTime(timeLeft)}
                     </div>
                 </div>
+                {/* Progress bar */}
+                <div className="h-0.5 bg-[#121318]">
+                    <div className="h-full bg-gradient-to-r from-[#ba9eff] to-[#8455ef] transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                </div>
+
             </header>
 
+            {/* ── MAIN LAYOUT — sidebar + content ── */}
+            <div className="flex flex-1">
+                {/* Sidebar */}
+                {currentSection !== 'complete' && (
+                    <aside className="w-56 flex-shrink-0 bg-[#121318] border-r border-[#47474c]/20 p-5 hidden lg:flex flex-col gap-2 pt-8">
+                        {sidebarSections.map((sec) => {
+                            const idx = sectionOrder.indexOf(sec.id);
+                            const curIdx = sectionOrder.indexOf(currentSection);
+                            const isActive = currentSection === sec.id;
+                            const isDone = completedSections[sec.id] || idx < curIdx;
+                            return (
+                                <div key={sec.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                                    isActive ? 'bg-[#ba9eff]/15 border border-[#ba9eff]/30' :
+                                    isDone ? 'opacity-60' : 'opacity-30'
+                                }`}>
+                                    <span className={`material-symbols-outlined text-xl ${
+                                        isActive ? 'text-[#ba9eff]' : isDone ? 'text-[#4ade80]' : 'text-[#75757a]'
+                                    }`}>{isDone && !isActive ? 'check_circle' : sec.icon}</span>
+                                    <div>
+                                        <p className={`text-xs font-semibold ${
+                                            isActive ? 'text-[#ba9eff]' : isDone ? 'text-[#4ade80]' : 'text-[#75757a]'
+                                        }`}>{sec.label}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </aside>
+                )}
+
             {/* Main Content */}
-            <main className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
-                {/* Coding Section - Only shown for tech roles */}
+            <main className="flex-1 px-6 py-8 overflow-auto">
+                {/* ── CODING ── */}
                 {currentSection === 'coding' && requiresCoding && assessment?.coding_questions?.length > 0 && (
-                    <div className="h-[calc(100vh-12rem)] flex flex-col animate-fade-in-up">
-                        <div className="flex items-center justify-between mb-4">
-                            <span className="font-mono text-xs text-secondary-400">
-                                QUESTION_INDEX: {currentQuestionIndex + 1}/{assessment.coding_questions.length}
-                            </span>
+                    <div className="h-[calc(100vh-11rem)] flex flex-col animate-fade-in-up">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-label text-[#abaab0] uppercase tracking-widest">Challenge {currentQuestionIndex + 1} of {assessment.coding_questions.length}</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-[#ba9eff]/30 text-[#ba9eff] bg-[#ba9eff]/10">MEDIUM</span>
+                            </div>
                             <div className="flex gap-2">
-                                <span className="px-2 py-1 bg-surface-elevated border border-surface-overlay rounded text-xs font-mono text-neutral-400">python-3.11</span>
-                                <span className="px-2 py-1 bg-surface-elevated border border-surface-overlay rounded text-xs font-mono text-neutral-400">sandbox: active</span>
+                                <span className="px-2 py-1 bg-[#1e1f25] border border-[#47474c]/30 rounded text-[10px] font-label text-[#abaab0]">python-3.11</span>
+                                <span className="px-2 py-1 bg-[#4ade80]/10 border border-[#4ade80]/20 rounded text-[10px] font-label text-[#4ade80]">Sandbox: ACTIVE</span>
                             </div>
                         </div>
-
-                        <div className="flex-1 border border-surface-overlay rounded-lg overflow-hidden shadow-2xl relative">
+                        <div className="flex-1 border border-[#47474c]/20 rounded-xl overflow-hidden shadow-2xl relative bg-[#0d1117]">
                             <CodeEditor
                                 questionId={assessment.coding_questions[currentQuestionIndex].id}
                                 title={assessment.coding_questions[currentQuestionIndex].title}
@@ -497,10 +473,8 @@ export function CandidateFlow() {
                                 isLoading={submitting}
                                 results={codeResults[assessment.coding_questions[currentQuestionIndex].id]}
                             />
-
-                            {/* Floating Next Button after submission */}
                             {codeResults[assessment.coding_questions[currentQuestionIndex].id] && !submitting && (
-                                <div className="absolute bottom-20 right-8 z-20 animate-bounce-in">
+                                <div className="absolute bottom-6 right-6 z-20">
                                     <button
                                         onClick={() => {
                                             if (currentQuestionIndex < assessment.coding_questions.length - 1) {
@@ -511,10 +485,10 @@ export function CandidateFlow() {
                                                 setCurrentQuestionIndex(0);
                                             }
                                         }}
-                                        className="flex items-center gap-3 px-8 py-3 bg-success-600 hover:bg-success-500 text-white rounded-full font-bold shadow-[0_0_30px_rgba(34,197,94,0.4)] border border-success-400 transition-all hover:scale-110 active:scale-95 group font-mono"
+                                        className="flex items-center gap-2 px-6 py-3 bg-[#4ade80] text-[#000] rounded-xl font-bold text-sm hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-[#4ade80]/30"
                                     >
-                                        <span>PROCEED_TO_{currentQuestionIndex < assessment.coding_questions.length - 1 ? 'NEXT_CHALLENGE' : 'SCENARIOS'}</span>
-                                        <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                        {currentQuestionIndex < assessment.coding_questions.length - 1 ? 'Next Challenge' : 'Proceed to MCQ'}
                                     </button>
                                 </div>
                             )}
@@ -522,236 +496,165 @@ export function CandidateFlow() {
                     </div>
                 )}
 
-                {/* MCQ Section */}
+                {/* ── MCQ ── */}
                 {currentSection === 'mcq' && assessment?.mcqs && (
-                    <div className="max-w-3xl mx-auto animate-fade-in-up pt-12">
-                        <div className="mb-6 flex justify-between items-end">
-                            <span className="font-mono text-xs text-secondary-400">
-                                SCENARIO_INDEX: {currentQuestionIndex + 1}/{assessment.mcqs.length}
-                            </span>
+                    <div className="max-w-2xl mx-auto animate-fade-in-up">
+                        {/* Question header */}
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <span className="text-[#abaab0] text-xs font-label uppercase tracking-widest">Q{currentQuestionIndex + 1} of {assessment.mcqs.length}</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-[#ff97b5]/30 text-[#ff97b5] bg-[#ff97b5]/10">TECHNICAL MCQ</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-[#ba9eff]/20 text-[#ba9eff] bg-[#ba9eff]/5">{assessment.mcqs[currentQuestionIndex].competency?.toUpperCase()}</span>
+                            </div>
                         </div>
 
-                        <div className="bg-surface-elevated rounded-xl border border-surface-overlay overflow-hidden shadow-2xl relative">
-                            {/* Decoration line */}
-                            <div className="absolute top-0 left-0 w-1 h-full bg-secondary-500" />
-
-                            <div className="px-8 py-6 border-b border-surface-overlay flex justify-between items-center bg-surface-base/30">
-                                <span className="px-3 py-1 bg-secondary-500/10 border border-secondary-500/20 text-secondary-400 rounded-full text-xs font-mono tracking-wider">
-                                    {assessment.mcqs[currentQuestionIndex].competency.toUpperCase()}
-                                </span>
-                                <span className="text-neutral-500 text-xs font-mono">SINGLE_CHOICE</span>
-                            </div>
-
+                        {/* Question card */}
+                        <div className="bg-[#121318] rounded-2xl overflow-hidden border-l-4 border-[#ba9eff] mb-6">
                             <div className="p-8">
-                                <h3 className="text-xl font-display font-semibold text-white mb-8 leading-relaxed">
+                                <h3 className="text-xl font-semibold text-white leading-relaxed mb-8">
                                     {assessment.mcqs[currentQuestionIndex].question}
                                 </h3>
-
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {Object.entries(assessment.mcqs[currentQuestionIndex].options).map(([key, value]) => (
                                         <button
                                             key={key}
                                             onClick={() => handleMCQSubmit(assessment.mcqs[currentQuestionIndex], key)}
                                             disabled={submitting}
-                                            className="w-full text-left p-4 border border-surface-overlay bg-surface-base/50 rounded-lg hover:border-primary-500 hover:bg-primary-900/10 transition-all flex items-center gap-4 group disabled:opacity-50"
+                                            className="w-full text-left p-4 rounded-xl bg-[#1e1f25] border border-[#47474c]/30 hover:border-[#ba9eff]/50 hover:bg-[#ba9eff]/10 transition-all flex items-center gap-4 group disabled:opacity-50"
                                         >
-                                            <span className="w-8 h-8 rounded bg-surface-elevated border border-surface-overlay group-hover:bg-primary-500 group-hover:text-white flex items-center justify-center font-mono text-neutral-400 transition-colors">
-                                                {key}
-                                            </span>
-                                            <span className="flex-1 text-neutral-300 group-hover:text-white transition-colors">
-                                                {value}
-                                            </span>
-                                            <ArrowRight size={16} className="text-neutral-600 group-hover:text-primary-400 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+                                            <span className="w-8 h-8 flex-shrink-0 rounded-lg bg-[#24252b] border border-[#47474c]/50 group-hover:bg-[#ba9eff]/20 group-hover:border-[#ba9eff]/50 flex items-center justify-center font-mono font-bold text-sm text-[#abaab0] group-hover:text-[#ba9eff] transition-all">{key}</span>
+                                            <span className="flex-1 text-[#abaab0] group-hover:text-white text-sm transition-colors">{value}</span>
+                                            {submitting && <div className="w-4 h-4 border-2 border-[#ba9eff] border-t-transparent rounded-full animate-spin" />}
                                         </button>
                                     ))}
                                 </div>
                             </div>
                         </div>
+                        {/* Mini grid */}
+                        <div className="flex flex-wrap gap-1.5">
+                            {assessment.mcqs.map((_, i) => (
+                                <div key={i} className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold transition-all ${
+                                    i < currentQuestionIndex ? 'bg-[#4ade80]/20 text-[#4ade80] border border-[#4ade80]/30' :
+                                    i === currentQuestionIndex ? 'bg-[#ba9eff]/20 text-[#ba9eff] border border-[#ba9eff]/50' :
+                                    'bg-[#1e1f25] text-[#75757a] border border-[#47474c]/20'
+                                }`}>{i + 1}</div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
-                {/* Text/Reasoning Section */}
+                {/* ── TEXT/REASONING ── */}
                 {currentSection === 'text' && assessment?.text_questions && (
-                    <div className="max-w-3xl mx-auto animate-fade-in-up pt-12">
-                        <div className="mb-6">
-                            <span className="font-mono text-xs text-secondary-400">
-                                REASONING_INDEX: {currentQuestionIndex + 1}/{assessment.text_questions.length}
-                            </span>
+                    <div className="max-w-2xl mx-auto animate-fade-in-up">
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="text-[#abaab0] text-xs font-label uppercase tracking-widest">Reasoning Q{currentQuestionIndex + 1} of {assessment.text_questions.length}</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-[#c08cf7]/30 text-[#c08cf7] bg-[#c08cf7]/10">{assessment.text_questions[currentQuestionIndex].competency?.toUpperCase()}</span>
                         </div>
-
-                        <div className="bg-surface-elevated rounded-xl border border-surface-overlay overflow-hidden shadow-2xl relative">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-primary-500" />
-
-                            <div className="px-8 py-6 border-b border-surface-overlay bg-surface-base/30">
-                                <div className="flex items-center gap-3 text-primary-400">
-                                    <FileText size={18} />
-                                    <span className="font-mono text-xs font-bold uppercase tracking-widest">
-                                        {assessment.text_questions[currentQuestionIndex].competency} ANALYSIS
-                                    </span>
-                                </div>
-                            </div>
-
+                        <div className="bg-[#121318] rounded-2xl overflow-hidden border-l-4 border-[#c08cf7] mb-4">
                             <div className="p-8">
-                                <h3 className="text-xl font-display font-semibold text-white mb-6">
+                                <h3 className="text-xl font-semibold text-white mb-6 leading-relaxed">
                                     {assessment.text_questions[currentQuestionIndex].question}
                                 </h3>
-
-                                <div className="mb-8 relative">
+                                <div className="relative mb-6">
                                     <textarea
                                         value={textAnswer}
                                         onChange={(e) => setTextAnswer(e.target.value)}
                                         placeholder="Enter your detailed reasoning here..."
-                                        className="w-full h-64 p-6 bg-surface-base border border-surface-overlay rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 resize-none font-sans text-neutral-300 leading-relaxed placeholder:text-neutral-700"
+                                        rows={8}
+                                        className="w-full bg-[#0d0e12] border border-[#47474c]/40 focus:border-[#ba9eff] rounded-xl p-5 text-sm text-[#f2f0f6] placeholder:text-[#47474c] resize-none outline-none transition-colors leading-relaxed"
                                         disabled={submitting}
                                     />
-                                    <div className="absolute bottom-4 right-4 flex gap-4 text-xs font-mono text-neutral-500 bg-surface-base/80 px-2 py-1 rounded border border-surface-overlay">
-                                        <span>MIN_WORDS: {assessment.text_questions[currentQuestionIndex].min_words}</span>
-                                        <span className={textAnswer.trim().split(/\s+/).length < assessment.text_questions[currentQuestionIndex].min_words ? 'text-warning-500' : 'text-success-400'}>
-                                            CURRENT: {textAnswer.trim().split(/\s+/).filter(w => w.length > 0).length}
+                                    <div className="absolute bottom-3 right-3 flex gap-3 text-[10px] font-label text-[#75757a]">
+                                        <span>MIN: {assessment.text_questions[currentQuestionIndex].min_words} words</span>
+                                        <span className={textAnswer.trim().split(/\s+/).filter(w=>w.length>0).length >= assessment.text_questions[currentQuestionIndex].min_words ? 'text-[#4ade80]' : 'text-[#ff97b5]'}>
+                                            NOW: {textAnswer.trim().split(/\s+/).filter(w=>w.length>0).length}
                                         </span>
                                     </div>
                                 </div>
-
                                 <button
                                     onClick={() => handleTextSubmit(textAnswer)}
-                                    disabled={submitting || textAnswer.trim().split(/\s+/).length < 5}
-                                    className="w-full py-4 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-semibold transition-all shadow-lg shadow-primary-900/20 disabled:opacity-50 flex items-center justify-center gap-3 group"
+                                    disabled={submitting || textAnswer.trim().split(/\s+/).filter(w=>w.length>0).length < 5}
+                                    className="w-full py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-[#ba9eff] to-[#8455ef] text-[#39008c] hover:brightness-110 active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                                 >
-                                    {submitting ? (
-                                        <>
-                                            <Loader2 className="animate-spin" size={20} />
-                                            <span>Submitting Analysis...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span>Submit Analysis</span>
-                                            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                                        </>
-                                    )}
+                                    {submitting ? <><div className="w-4 h-4 border-2 border-[#39008c] border-t-transparent rounded-full animate-spin" />Submitting...</> : 'Submit Analysis'}
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Psychometric Section */}
+                {/* ── PSYCHOMETRIC ── */}
                 {currentSection === 'psychometric' && assessment?.psychometric_sliders && (
-                    <div className="max-w-3xl mx-auto animate-fade-in-up pt-12">
-                        <div className="bg-surface-elevated rounded-xl border border-surface-overlay overflow-hidden shadow-2xl relative">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-success-500" />
-
-                            <div className="px-8 py-6 border-b border-surface-overlay bg-surface-base/30">
-                                <h2 className="text-xl font-display font-semibold text-white">Psychometric Profile</h2>
-                                <p className="text-neutral-400 text-sm mt-1 font-mono">
-                                    CALIBRATE_SELF_PERCEPTION
-                                </p>
-                            </div>
-
-                            <div className="p-8 space-y-10">
-                                {assessment.psychometric_sliders.map((slider) => (
-                                    <div key={slider.id} className="relative">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <label className="font-medium text-neutral-200">
-                                                {slider.label}
-                                            </label>
-                                            <div className="flex items-center gap-3">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${(psychScores[slider.id] ?? 5) <= 3 ? 'bg-danger-900/10 text-danger-400 border-danger-500/20' :
-                                                    (psychScores[slider.id] ?? 5) <= 6 ? 'bg-warning-900/10 text-warning-400 border-warning-500/20' :
-                                                        'bg-success-900/10 text-success-400 border-success-500/20'
-                                                    }`}>
-                                                    {getSliderLabel(psychScores[slider.id] ?? 5)}
-                                                </span>
-                                                <span className="px-3 py-1 bg-surface-base border border-surface-overlay rounded text-primary-400 font-mono font-bold w-12 text-center text-sm shadow-inner group-hover:border-primary-500/50 transition-colors">
-                                                    [{psychScores[slider.id] ?? 5}]
-                                                </span>
-                                            </div>
+                    <div className="max-w-2xl mx-auto animate-fade-in-up">
+                        <div className="mb-4">
+                            <h2 className="text-xl font-bold">Psychometric Profile</h2>
+                            <p className="text-[#abaab0] text-sm">Rate each statement honestly — this calibrates your cognitive architecture</p>
+                        </div>
+                        <div className="bg-[#121318] rounded-2xl p-8 space-y-8 border-l-4 border-[#4ade80]">
+                            {assessment.psychometric_sliders.map((slider) => {
+                                const val = psychScores[slider.id] ?? 5;
+                                return (
+                                    <div key={slider.id}>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <label className="font-medium text-sm text-[#f2f0f6]">{slider.label}</label>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                                val <= 3 ? 'bg-[#ff6e84]/10 text-[#ff6e84] border-[#ff6e84]/30' :
+                                                val <= 6 ? 'bg-amber-400/10 text-amber-400 border-amber-400/30' :
+                                                'bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30'
+                                            }`}>{getSliderLabel(val)} [{val}]</span>
                                         </div>
-                                        <input
-                                            type="range"
-                                            min={slider.min}
-                                            max={slider.max}
-                                            value={psychScores[slider.id] ?? 5}
-                                            onChange={(e) => setPsychScores(prev => ({
-                                                ...prev,
-                                                [slider.id]: parseInt(e.target.value)
-                                            }))}
-                                            className="w-full h-2 bg-surface-base rounded-lg appearance-none cursor-pointer accent-primary-500 hover:accent-primary-400"
+                                        <input type="range" min={slider.min} max={slider.max} value={val}
+                                            onChange={(e) => setPsychScores(prev => ({ ...prev, [slider.id]: parseInt(e.target.value) }))}
+                                            className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[#ba9eff] bg-[#24252b]"
                                         />
-                                        <div className="flex justify-between text-xs font-mono text-neutral-500 mt-2 uppercase tracking-wider">
-                                            <span>Strongly Disagree</span>
-                                            <span>Strongly Agree</span>
+                                        <div className="flex justify-between text-[10px] font-label text-[#75757a] mt-1">
+                                            <span>Strongly Disagree</span><span>Strongly Agree</span>
                                         </div>
                                     </div>
-                                ))}
-
-                                <button
-                                    onClick={handlePsychometricSubmit}
-                                    disabled={submitting}
-                                    className="w-full py-4 bg-success-600 hover:bg-success-500 text-white rounded-lg font-semibold text-lg shadow-lg shadow-success-900/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3 mt-8 hover:scale-[1.01]"
-                                >
-                                    {submitting ? (
-                                        <>
-                                            <Loader2 className="animate-spin" size={22} />
-                                            <span>Compiling Forensic Report...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span>Finalize Assessment</span>
-                                            <CheckCircle size={22} />
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                                );
+                            })}
+                            <button
+                                onClick={handlePsychometricSubmit}
+                                disabled={submitting}
+                                className="w-full py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-[#4ade80] to-[#22c55e] text-[#000] hover:brightness-110 active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-2 mt-4"
+                            >
+                                {submitting ? <><div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />Compiling Report...</> : <><span className="material-symbols-outlined text-sm">check_circle</span>Finalize Assessment</>}
+                            </button>
                         </div>
                     </div>
                 )}
 
-                {/* Complete Section */}
+                {/* ── COMPLETE ── */}
                 {currentSection === 'complete' && (
-                    <div className="max-w-2xl mx-auto text-center pt-20">
-                        <div className="glass-panel rounded-2xl border border-secondary/20 p-12">
-                            <div className="w-24 h-24 bg-secondary/10 border border-secondary/20 rounded-full flex items-center justify-center mx-auto mb-8">
-                                <CheckCircle className="w-12 h-12 text-secondary" />
-                            </div>
-                            <h2 className="text-3xl font-headline font-bold text-white mb-4 tracking-tight">
-                                Assessment Protocol Complete
-                            </h2>
-                            <p className="text-on-surface-variant mb-10 text-lg leading-relaxed">
-                                Evidence has been secured and encrypted. The AI analysis engine is currently processing your submission.
-                            </p>
-                            <div className="bg-surface-container-low rounded-2xl p-8 mb-10 border border-outline-variant/10 text-left">
-                                <h3 className="font-label text-sm font-bold text-on-surface mb-4 uppercase tracking-widest">Authentication Log</h3>
-                                <ul className="space-y-4">
-                                    <li className="flex items-center gap-3 text-on-surface-variant text-sm font-label">
-                                        <Check className="w-4 h-4 text-secondary" />
-                                        <span>Code Sandbox Execution: VERIFIED</span>
-                                    </li>
-                                    <li className="flex items-center gap-3 text-on-surface-variant text-sm font-label">
-                                        {violationCount === 0 ? (
-                                            <>
-                                                <Check className="w-4 h-4 text-secondary" />
-                                                <span>Integrity Monitor Status: CLEAN (SAFE)</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <AlertCircle className={`w-4 h-4 ${violationCount >= 5 ? 'text-tertiary' : 'text-amber-400'}`} />
-                                                <span>Integrity Monitor Status: {violationCount} Events Logged ({violationCount >= 5 ? '⚠ HIGH RISK' : 'CAUTION'})</span>
-                                            </>
-                                        )}
-                                    </li>
-                                    <li className="flex items-center gap-3 text-on-surface-variant text-sm font-label">
-                                        <Check className="w-4 h-4 text-secondary" />
-                                        <span>Forensic Report Generation: QUEUED</span>
-                                    </li>
-                                </ul>
-                            </div>
-                            <p className="text-xs font-label text-on-surface-variant/40">
-                                SESSION_ID: {candidateId} • CONNECTION_TERMINATED
-                            </p>
+                    <div className="max-w-xl mx-auto text-center pt-16">
+                        <div className="w-24 h-24 bg-[#4ade80]/10 border-2 border-[#4ade80]/30 rounded-full flex items-center justify-center mx-auto mb-8">
+                            <span className="material-symbols-outlined text-5xl text-[#4ade80]">verified</span>
                         </div>
+                        <h2 className="text-3xl font-bold mb-3 tracking-tight">Assessment Complete</h2>
+                        <p className="text-[#abaab0] text-base mb-10">Evidence secured and encrypted. The AI is processing your forensic report.</p>
+                        <div className="bg-[#121318] rounded-2xl p-8 text-left border border-[#47474c]/20 mb-8">
+                            <h3 className="text-xs font-label font-bold uppercase tracking-widest text-[#abaab0] mb-5">Authentication Log</h3>
+                            <div className="space-y-4">
+                                {[
+                                    { label: 'Code Sandbox Execution', status: 'VERIFIED', ok: true },
+                                    { label: `Integrity Events`, status: violationCount === 0 ? 'CLEAN' : `${violationCount} EVENTS — ${violationCount >= 5 ? 'HIGH RISK' : 'CAUTION'}`, ok: violationCount === 0 },
+                                    { label: 'Forensic Report Generation', status: 'QUEUED', ok: true },
+                                ].map((item, i) => (
+                                    <div key={i} className="flex items-center gap-3">
+                                        <span className={`material-symbols-outlined text-sm ${item.ok ? 'text-[#4ade80]' : 'text-amber-400'}`}>
+                                            {item.ok ? 'check_circle' : 'warning'}
+                                        </span>
+                                        <span className="text-sm text-[#abaab0]">{item.label}:</span>
+                                        <span className={`text-sm font-bold ${item.ok ? 'text-[#4ade80]' : 'text-amber-400'}`}>{item.status}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="text-[10px] font-label text-[#47474c] uppercase tracking-widest">SESSION: {candidateId} · TERMINATED</p>
                     </div>
                 )}
             </main>
+            </div>
         </div>
     );
 }
