@@ -1,4 +1,3 @@
-# Render deployment configuration — Cygnusa Guardian Backend
 services:
   - type: web
     name: cygnusa-guardian-api
@@ -6,13 +5,11 @@ services:
     region: oregon
     plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: ENV
-        value: production
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: "3.11.9"
       - key: DATABASE_URL
         sync: false           # PostgreSQL connection string from Render DB or Supabase
       - key: GEMINI_API_KEY
