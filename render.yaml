@@ -1,4 +1,4 @@
-# Render deployment configuration
+# Render deployment configuration — Cygnusa Guardian Backend
 services:
   - type: web
     name: cygnusa-guardian-api
@@ -14,15 +14,25 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: DATABASE_URL
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
+        sync: false           # PostgreSQL connection string from Render DB or Supabase
       - key: GEMINI_API_KEY
-        sync: false
+        sync: false           # Google AI Studio key
       - key: JWT_SECRET_KEY
+        sync: false           # openssl rand -base64 48
+      - key: FRONTEND_URL
+        sync: false           # https://cygnusa-guardian.vercel.app
+      - key: MAGIC_LINK_TTL_HOURS
+        value: "72"
+      # ── Email (SMTP) for Magic Link invitations ──────────────────────────
+      - key: SMTP_HOST
+        sync: false           # smtp.gmail.com or smtp.resend.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
         sync: false
     healthCheckPath: /api/health
+    autoDeploy: true          # Re-deploy on every push to main
