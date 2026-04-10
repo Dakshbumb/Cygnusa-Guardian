@@ -220,7 +220,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                 // Wait for MediaPipe to load (retry up to 10 times with 500ms delay)
                 let mediaPipeReady = false;
                 for (let i = 0; i < 10 && !mediaPipeReady; i++) {
-                    if (window.FaceDetection && window.Camera) {
+                    if (window.FaceDetection) {
                         mediaPipeReady = true;
                     } else {
                         await new Promise(resolve => setTimeout(resolve, 500));
@@ -438,22 +438,52 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                         let lastFrameTime = 0;
                         const frameInterval = 200; // 200ms = 5 FPS
 
-                        camera = new window.Camera(videoRef.current, {
-                            onFrame: async () => {
+                        if (window.Camera) {
+                            // Use MediaPipe Camera class if available
+                            camera = new window.Camera(videoRef.current, {
+                                onFrame: async () => {
+                                    const now = Date.now();
+                                    if (now - lastFrameTime >= frameInterval) {
+                                        lastFrameTime = now;
+                                        try {
+                                            await faceDetection.send({ image: videoRef.current });
+                                        } catch (e) {
+                                            // Silently ignore frame processing errors
+                                        }
+                                    }
+                                },
+                                width: 320,
+                                height: 192
+                            });
+                            await camera.start();
+                        } else {
+                            // Fallback: Camera class not loaded, use getUserMedia + requestAnimationFrame
+                            console.log('MediaPipe Camera not available, using manual frame loop');
+                            const stream = await navigator.mediaDevices.getUserMedia({
+                                video: { width: 320, height: 240 }
+                            });
+                            videoRef.current.srcObject = stream;
+
+                            const sendFrameLoop = async () => {
+                                if (!videoRef.current || videoRef.current.readyState < 2) {
+                                    requestAnimationFrame(sendFrameLoop);
+                                    return;
+                                }
                                 const now = Date.now();
                                 if (now - lastFrameTime >= frameInterval) {
                                     lastFrameTime = now;
                                     try {
                                         await faceDetection.send({ image: videoRef.current });
                                     } catch (e) {
-                                        // Silently ignore frame processing errors
+                                        // Silently ignore
                                     }
                                 }
-                            },
-                            width: 320,
-                            height: 192
-                        });
-                        await camera.start();
+                                setTimeout(() => requestAnimationFrame(sendFrameLoop), frameInterval);
+                            };
+
+                            videoRef.current.onloadeddata = () => sendFrameLoop();
+                        }
+
                         setStatus('monitoring');
 
                         snapshotInterval = setInterval(() => {
