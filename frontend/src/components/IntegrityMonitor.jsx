@@ -113,9 +113,23 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
         setViolations(prev => {
             const updated = [...prev, newViolation];
-            if (updated.length >= 100) {
+
+            // Severity-weighted lockdown thresholds (real product values)
+            const criticalCount = updated.filter(v => v.severity === 'critical').length;
+            const highCount = updated.filter(v => v.severity === 'high').length;
+            const shouldLock =
+                criticalCount >= 3 ||   // 3 critical events = immediate lockdown
+                highCount >= 10 ||       // 10 high severity events = lockdown
+                updated.length >= 30;    // 30 total events = lockdown (spam threshold)
+
+            if (shouldLock) {
+                const reason = criticalCount >= 3
+                    ? 'CRITICAL_VIOLATION_LIMIT_REACHED'
+                    : highCount >= 10
+                        ? 'HIGH_SEVERITY_THRESHOLD_EXCEEDED'
+                        : 'VIOLATION_SPAM_DETECTED';
                 setIsLocked(true);
-                setLockdownReason('INTEGRITY_THRESHOLD_EXCEEDED');
+                setLockdownReason(reason);
             }
             return updated;
         });
@@ -188,30 +202,33 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
 
         const checkPeripherals = async () => {
             try {
-                // 1. Multi-Monitor Detection
-                const isExtended = window.screen.isExtended || (window.screen.availWidth > window.innerWidth * 1.5);
+                // 1. Multi-Monitor Detection — reliable cross-browser check
+                // screen.isExtended is Chrome 94+; availWidth fallback catches older browsers
+                const isExtended =
+                    window.screen.isExtended === true ||
+                    (window.screen.availWidth > window.screen.width * 1.2);
                 if (isExtended) {
-                    logViolationRef.current?.('external_display_connected', 'medium', 'Multiple monitors or extended display detected');
+                    logViolationRef.current?.(
+                        'external_display_connected',
+                        'medium',
+                        `Extended display detected: availWidth=${window.screen.availWidth}px, screenWidth=${window.screen.width}px`
+                    );
                 }
 
-                // 2. Bluetooth Proximity Logic (Heuristic for Mobile Detection)
-                if (navigator.bluetooth && navigator.bluetooth.getAvailability) {
-                    try {
-                        const available = await navigator.bluetooth.getAvailability();
-                        if (available) {
-                            // Log mobile proximity detection
-                            logViolationRef.current?.('mobile_proximity_potential', 'medium', 'UNAUTHORIZED_DEVICE_SIGNAL: Potential mobile device detected nearby');
-                        }
-                    } catch (btErr) {
-                        // Bluetooth API may throw in some browsers
-                        console.warn('Bluetooth check failed:', btErr);
-                    }
+                // 2. Virtual Machine / Remote Desktop Heuristic
+                // Low hardware concurrency on a "developer" machine is a weak signal but worth flagging
+                if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) {
+                    logViolationRef.current?.(
+                        'low_cpu_environment',
+                        'low',
+                        `Low CPU core count detected (${navigator.hardwareConcurrency} cores) — possible VM or thin client`
+                    );
                 }
 
-                // 3. Check for screen sharing (browser API)
-                if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-                    // Can't directly check if sharing, but we can detect if permission was granted
-                }
+                // NOTE: Bluetooth API removed — navigator.bluetooth.getAvailability() returns true
+                // for the test machine's own Bluetooth chip, making it a 100% false positive.
+                // A future improvement could use the Web USB API with specific device enumeration.
+
             } catch (err) {
                 console.warn('Peripheral check error:', err);
             }
@@ -601,46 +618,28 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                                 detectFacesNative();
                             };
                         } else {
-                            console.warn('No FaceDetector API, using simulation mode');
-                            // Fallback: simulate face detection for demo
-                            const simulateFaceDetection = () => {
-                                const canvas = canvasRef.current;
-                                const video = videoRef.current;
-
-                                if (canvas && video && video.readyState >= 2) {
-                                    const rect = video.getBoundingClientRect();
-                                    canvas.width = rect.width;
-                                    canvas.height = rect.height;
-
-                                    const ctx = canvas.getContext('2d');
-                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                                    // Draw simulated face box in center
-                                    const boxW = canvas.width * 0.4;
-                                    const boxH = canvas.height * 0.5;
-                                    const boxX = (canvas.width - boxW) / 2;
-                                    const boxY = (canvas.height - boxH) / 2 - 10;
-
-                                    ctx.strokeStyle = '#10b981';
-                                    ctx.lineWidth = 3;
-                                    ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-                                    ctx.fillStyle = '#10b981';
-                                    ctx.font = 'bold 10px monospace';
-                                    ctx.fillText('Face 1 (Simulated)', boxX, boxY - 5);
-
-                                    if (faceStatusRef.current !== 'MATCH') {
-                                        setFaceStatus('MATCH');
-                                        faceStatusRef.current = 'MATCH';
-                                    }
-                                }
-
-                                requestAnimationFrame(simulateFaceDetection);
-                            };
-
-                            videoRef.current.onloadeddata = () => {
-                                simulateFaceDetection();
-                            };
+                            // No FaceDetector API available — this is a real failure, not a demo.
+                            // Simulation mode is DISABLED in production: reporting a fake MATCH
+                            // would silently defeat the entire proctoring system.
+                            console.error(
+                                '[IntegrityMonitor] CRITICAL: No face detection API available.\n' +
+                                '  - MediaPipe CDN failed to load\n' +
+                                '  - Native FaceDetector API not supported in this browser\n' +
+                                '  Proctoring is DISABLED for this session.'
+                            );
+                            setFaceStatus('NO_FACE');
+                            faceStatusRef.current = 'NO_FACE';
+                            setWebcamError(
+                                'Face detection is unavailable in this browser. ' +
+                                'Please use Chrome 94+ or Edge 94+ to complete this assessment.'
+                            );
+                            setStatus('webcam_error');
+                            // Log hard failure so the recruiter can see this in audit trail
+                            logViolationRef.current?.(
+                                'face_detection_unavailable',
+                                'critical',
+                                'Browser does not support face detection API. MediaPipe CDN may be blocked or browser is unsupported.'
+                            );
                         }
 
                         setStatus('monitoring');
@@ -859,7 +858,11 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
                             </h2>
                             <p className="text-[#abaab0] text-sm mb-8 leading-relaxed" style={{ fontFamily: 'monospace' }}>
                                 {isLocked
-                                    ? `Integrity threshold of 100 violations has been exceeded. This assessment is now in LOCKDOWN mode.`
+                                    ? (() => {
+                                        const critical = violations.filter(v => v.severity === 'critical').length;
+                                        const high = violations.filter(v => v.severity === 'high').length;
+                                        return `Integrity lockdown triggered. Critical: ${critical}/3 • High: ${high}/10 • Total: ${violations.length}/30. Recruiter has been notified.`;
+                                    })()
                                     : `This assessment requires FULLSCREEN mode for environment integrity. Click the button below to enter fullscreen and continue.`
                                 }
                             </p>
