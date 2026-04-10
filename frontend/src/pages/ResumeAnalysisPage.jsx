@@ -55,17 +55,13 @@ export function ResumeAnalysisPage() {
         }
 
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('job_title', jobTitle);
-            if (jobDescription) formData.append('job_description', jobDescription);
-
-            const res = await api.uploadResume(formData);
+            const res = await api.analyzeResume(file, jobDescription || 'python,javascript,react', '', '', jobTitle);
             setCandidateId(res.data.candidate_id);
             setResult(res.data);
             setStep(2);
         } catch (err) {
-            setError(err.response?.data?.detail || 'Analysis failed. Please try again.');
+            const detail = err.response?.data?.detail;
+            setError(typeof detail === 'string' ? detail : 'Analysis failed. Please try again.');
             setStep(3);
         }
     };

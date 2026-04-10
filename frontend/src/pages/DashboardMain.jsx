@@ -65,7 +65,7 @@ export function DashboardMain() {
         return <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-tight bg-tertiary/10 text-tertiary border border-tertiary/20">LOW</span>;
     };
 
-
+    const tabs = ['All Candidates', ...new Set(candidates.map(c => c.job_title).filter(Boolean))];
 
     return (
         <div className="bg-background text-on-background font-body min-h-screen">
@@ -361,7 +361,7 @@ export function DashboardMain() {
                         </table>
                     </div>
                     <div className="p-4 flex justify-between items-center bg-surface-container-low/30 text-[10px] uppercase font-bold tracking-widest text-slate-500 font-label">
-                        <div>Showing {displayCandidates.length} of {total} candidates</div>
+                        <div>Showing {filteredCandidates.length} of {total} candidates</div>
                         <div className="flex gap-2">
                             <button className="p-2 hover:bg-surface-container-high rounded transition-colors opacity-30" disabled>
                                 <span className="material-symbols-outlined">chevron_left</span>
