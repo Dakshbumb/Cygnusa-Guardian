@@ -24,7 +24,8 @@ export function CandidateFlow() {
     const [assessment, setAssessment] = useState(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState(null);
+    const [loadError, setLoadError] = useState(null); // Only for initial load failure
+    const [inlineError, setInlineError] = useState(null); // Inline toast for submission errors
 
     // Track current step - will be adjusted based on requires_coding
     const [currentSection, setCurrentSection] = useState(null); // null until loaded, then coding/mcq/text/psychometric/complete
@@ -43,6 +44,9 @@ export function CandidateFlow() {
     const [psychScores, setPsychScores] = useState({});
     const [textAnswer, setTextAnswer] = useState(''); // Current text answer input
     const [violationCount, setViolationCount] = useState(0);
+    const [tabSwitchCount, setTabSwitchCount] = useState(0);
+    const [integrityStatus, setIntegrityStatus] = useState('NOMINAL');
+    const [faceDetectionStatus, setFaceDetectionStatus] = useState('SCANNING');
     const [activeProbe, setActiveProbe] = useState(null); // { questionId, code }
 
     const [completedSections, setCompletedSections] = useState({
@@ -55,6 +59,36 @@ export function CandidateFlow() {
 
     // Claim verification state
     const [showClaimProber, setShowClaimProber] = useState(false);
+
+    // Auto-dismiss inline error after 5 seconds
+    useEffect(() => {
+        if (inlineError) {
+            const timer = setTimeout(() => setInlineError(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [inlineError]);
+
+    // Handle violation events from IntegrityMonitor
+    const handleViolation = (violation) => {
+        setViolationCount(prev => prev + 1);
+        if (violation.eventType === 'tab_switch') {
+            setTabSwitchCount(prev => prev + 1);
+        }
+        // Update face status
+        if (violation.eventType === 'no_face_detected') {
+            setFaceDetectionStatus('NO_FACE');
+        } else if (violation.eventType === 'multiple_faces') {
+            setFaceDetectionStatus('MULTIPLE');
+        } else if (violation.eventType === 'identity_mismatch') {
+            setFaceDetectionStatus('MISMATCH');
+        }
+        // Update integrity status based on severity
+        if (violation.severity === 'critical') {
+            setIntegrityStatus('CRITICAL');
+        } else if (violation.severity === 'high' && integrityStatus === 'NOMINAL') {
+            setIntegrityStatus('ALERT');
+        }
+    };
 
     // Load assessment on mount
     useEffect(() => {
@@ -88,7 +122,7 @@ export function CandidateFlow() {
                 }
             } catch (err) {
                 console.error('Failed to load assessment:', err);
-                setError('Failed to load assessment. Please refresh the page.');
+                setLoadError('Failed to load assessment. Please refresh the page.');
             } finally {
                 setLoading(false);
             }
@@ -164,7 +198,7 @@ export function CandidateFlow() {
             // The user must see the results and click 'Next'
         } catch (err) {
             console.error('Code submission failed:', err);
-            setError('Failed to submit code. Please try again.');
+            setInlineError('Failed to submit code. Please try again.');
         } finally {
             setSubmitting(false);
             // Trigger Shadow Probe after submission
@@ -210,7 +244,7 @@ export function CandidateFlow() {
             }
         } catch (err) {
             console.error('MCQ submission failed:', err);
-            setError('Failed to submit answer. Please try again.');
+            setInlineError('Failed to submit answer. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -245,7 +279,7 @@ export function CandidateFlow() {
             }
         } catch (err) {
             console.error('Text submission failed:', err);
-            setError('Failed to submit answer. Please try again.');
+            setInlineError('Failed to submit answer. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -279,7 +313,7 @@ export function CandidateFlow() {
                 err.message ||
                 'Unknown error occurred';
 
-            setError(`Failed to submit assessment: ${errorDetail}`);
+            setInlineError(`Failed to submit assessment: ${errorDetail}`);
         } finally {
             setSubmitting(false);
         }
@@ -300,14 +334,14 @@ export function CandidateFlow() {
         );
     }
 
-    // Error state
-    if (error) {
+    // Fatal load error state (only for initial assessment load failure)
+    if (loadError) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background text-on-surface">
                 <div className="text-center max-w-md glass-panel p-8 rounded-2xl border border-tertiary/20">
                     <AlertCircle className="w-12 h-12 text-tertiary mx-auto mb-4" />
                     <p className="text-white font-bold mb-2">Something went wrong</p>
-                    <p className="text-on-surface-variant mb-4 text-sm">{error}</p>
+                    <p className="text-on-surface-variant mb-4 text-sm">{loadError}</p>
                     <button
                         onClick={() => window.location.reload()}
                         className="px-6 py-3 bg-primary-container text-white rounded-xl font-label uppercase text-xs tracking-widest hover:brightness-110 active:scale-95 transition-all"
@@ -380,21 +414,33 @@ export function CandidateFlow() {
             )}
             {currentSection !== 'complete' && assessment && localStorage.getItem('role') !== 'recruiter' && (
                 <>
-                    <IntegrityMonitor candidateId={candidateId} onViolationUpdate={(count) => setViolationCount(count)} />
+                    <IntegrityMonitor candidateId={candidateId} onViolation={handleViolation} />
                     <div className="fixed bottom-4 right-4 z-50">
                         <WebcamProctor candidateId={candidateId} captureInterval={30000} onStatusChange={(s) => console.log('Webcam:', s)} />
                     </div>
                 </>
             )}
 
+            {/* Inline Error Toast — does NOT destroy the form */}
+            {inlineError && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] max-w-md animate-fade-in-up">
+                    <div className="bg-[#ff6e84]/15 border border-[#ff6e84]/40 text-[#ff6e84] px-6 py-3 rounded-xl flex items-center gap-3 shadow-lg backdrop-blur-xl">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <span className="text-sm font-medium">{inlineError}</span>
+                        <button onClick={() => setInlineError(null)} className="ml-auto text-[#ff6e84]/60 hover:text-[#ff6e84] text-xl font-bold">×</button>
+                    </div>
+                </div>
+            )}
+
             {/* ── TOP NAVBAR ── */}
             <header className="bg-[#0d0e12]/90 border-b border-[#47474c]/20 sticky top-0 z-40 backdrop-blur-xl">
-                {/* Anti-cheat status bar */}
+                {/* Anti-cheat status bar — LIVE DATA */}
                 <div className="bg-[#121318] border-b border-[#47474c]/20 px-8 py-1.5 flex items-center gap-6 text-[10px] font-label uppercase tracking-widest">
-                    <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="w-1.5 h-1.5 rounded-full bg-[#4ade80]"></span>Webcam Active</div>
-                    <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="material-symbols-outlined text-xs">shield</span>Tab Switches: {violationCount}</div>
+                    <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse"></span>Webcam Active</div>
+                    <div className={`flex items-center gap-1.5 ${tabSwitchCount > 0 ? 'text-[#ff6e84]' : 'text-[#4ade80]'}`}><span className="material-symbols-outlined text-xs">shield</span>Tab Switches: {tabSwitchCount}</div>
                     <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="material-symbols-outlined text-xs">block</span>Copy-Paste: BLOCKED</div>
-                    <div className="flex items-center gap-1.5 text-[#4ade80]"><span className="material-symbols-outlined text-xs">verified_user</span>Integrity: NOMINAL</div>
+                    <div className={`flex items-center gap-1.5 ${integrityStatus === 'CRITICAL' ? 'text-[#ff6e84]' : integrityStatus === 'ALERT' ? 'text-amber-400' : 'text-[#4ade80]'}`}><span className="material-symbols-outlined text-xs">{integrityStatus === 'NOMINAL' ? 'verified_user' : 'gpp_maybe'}</span>Integrity: {integrityStatus}</div>
+                    <div className={`flex items-center gap-1.5 ${violationCount > 0 ? 'text-amber-400' : 'text-[#75757a]'}`}><span className="material-symbols-outlined text-xs">warning</span>Events: {violationCount}</div>
                     <div className="ml-auto text-[#75757a] font-mono text-[9px]">SESSION: {candidateId?.slice(0, 16)}...</div>
                 </div>
                 <div className="max-w-[1440px] mx-auto px-8 py-3 flex items-center justify-between">

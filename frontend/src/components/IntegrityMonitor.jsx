@@ -21,7 +21,7 @@ export function IntegrityMonitor({ candidateId, onViolation }) {
     const [faceStatus, setFaceStatus] = useState('SCANNING'); // MATCH, NO_FACE, MULTIPLE, DIFFERENT_PERSON
     const faceStatusRef = useRef('SCANNING');
     const [isLocked, setIsLocked] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(true);
+    const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
     const [lockdownReason, setLockdownReason] = useState('');
 
     // Face identity baseline - capture initial face to compare later
