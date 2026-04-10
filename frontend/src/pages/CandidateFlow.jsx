@@ -288,7 +288,7 @@ export function CandidateFlow() {
     // Handle psychometric submission
     const handlePsychometricSubmit = async () => {
         setSubmitting(true);
-        setError(null); // Clear previous errors
+        setInlineError(null); // Clear previous errors
 
         try {
             console.log('[SUBMISSION] Starting psychometric submission for:', candidateId);
