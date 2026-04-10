@@ -89,18 +89,25 @@ http.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor - auto-redirect on 401
+// Response interceptor - redirect to login only when genuinely unauthenticated
 http.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user_id');
-            localStorage.removeItem('role');
-            localStorage.removeItem('name');
+            const token = localStorage.getItem('token');
+            const isAuthEndpoint = error.config?.url?.includes('/auth/');
 
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = '/login';
+            // Only force-logout if the auth endpoint itself rejected the token
+            // (expired/invalid JWT), NOT on regular API 401s while browsing
+            if (isAuthEndpoint || !token) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('role');
+                localStorage.removeItem('name');
+
+                if (!window.location.pathname.includes('/login')) {
+                    window.location.href = '/login';
+                }
             }
         }
         return Promise.reject(error);
@@ -120,14 +127,22 @@ const createFormData = (data) => {
 
 export const api = {
     // ==================== Authentication ====================
-    login: (email, role) => http.post('/auth/login', { email, role }),
+    login: (email, password, role) => http.post('/auth/login', { email, password, role }),
+    register: (name, email, password, role) => http.post('/auth/register', { name, email, password, role }),
     getMe: () => http.get('/auth/me'),
     health: () => http.get('/health'),
+    logout: () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('role');
+        localStorage.removeItem('name');
+        window.location.href = '/login';
+    },
 
     // ==================== Candidates ====================
     createCandidate: async (name, email, jobTitle) => {
         const fd = createFormData({ name, email, job_title: jobTitle });
-        return http.post('/candidates', fd, {
+        return http.post('/candidates/create', fd, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
     },

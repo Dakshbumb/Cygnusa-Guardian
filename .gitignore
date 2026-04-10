@@ -6,12 +6,17 @@ __pycache__/
 venv/
 ENV/
 .env
+backend/.env
+backend/__pycache__/
+backend/.pytest_cache/
 
 # Database & Logs
-cygnusa.db
+*.db
 *.log
 
-# Local Storage (Now handled by Supabase)
+# Local Storage (created at runtime by main.py)
+uploads/
+snapshots/
 backend/uploads/
 backend/snapshots/
 frontend/dist/

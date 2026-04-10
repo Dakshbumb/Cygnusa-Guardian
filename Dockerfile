@@ -1,3 +1,5 @@
+# Build from repo root: docker build -t cygnusa-guardian .
+# Used by docker-compose.yml and Render (render.yaml)
 # Use Python 3.11 slim image
 FROM python:3.11-slim
 

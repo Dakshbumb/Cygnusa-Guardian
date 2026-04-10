@@ -14,11 +14,21 @@ import os
 import re
 from typing import Dict, List, Optional, Tuple
 
-import magic
+try:
+    import magic
+    HAS_MAGIC = True
+except (ImportError, OSError):
+    HAS_MAGIC = False
+
 import pdfplumber
 import docx
 from fastapi import UploadFile
-import google.generativeai as genai
+
+try:
+    import google.generativeai as genai
+    HAS_GENAI = True
+except ImportError:
+    HAS_GENAI = False
 
 logger = logging.getLogger("cygnusa-validator")
 
@@ -40,12 +50,15 @@ class ResumeValidator:
     
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
-        if api_key:
+        if HAS_GENAI and api_key:
             genai.configure(api_key=api_key)
             self.model = genai.GenerativeModel('gemini-1.5-flash')
             self.has_ai = True
         else:
-            logger.warning("GEMINI_API_KEY not found. Layer 3 validation will be skipped.")
+            if not HAS_GENAI:
+                logger.warning("google-generativeai not installed. Layer 3 validation disabled.")
+            else:
+                logger.warning("GEMINI_API_KEY not found. Layer 3 validation will be skipped.")
             self.has_ai = False
 
     async def validate_file(self, file: UploadFile) -> Tuple[bool, str, str]:
@@ -97,12 +110,15 @@ class ResumeValidator:
         if ext not in self.ALLOWED_EXTENSIONS:
             return False, "invalid_format", f"Unsupported file extension: {ext}. Only PDF and DOCX are allowed."
         
-        # Check magic bytes / MIME type
-        mime = magic.from_buffer(content, mime=True)
-        if mime not in self.ALLOWED_MIME_TYPES:
-            # Extra check for some DOCX variants or PDF headers
-            if not (mime == 'application/octet-stream' and ext == '.docx'):
-                return False, "invalid_format", f"MIME type mismatch: {mime}. File signature does not match extension."
+        # Check magic bytes / MIME type (skip on platforms without libmagic)
+        if HAS_MAGIC:
+            mime = magic.from_buffer(content, mime=True)
+            if mime not in self.ALLOWED_MIME_TYPES:
+                # Extra check for some DOCX variants or PDF headers
+                if not (mime == 'application/octet-stream' and ext == '.docx'):
+                    return False, "invalid_format", f"MIME type mismatch: {mime}. File signature does not match extension."
+        else:
+            logger.debug("libmagic unavailable; skipping MIME validation (extension check passed).")
 
         return True, "", ""
 

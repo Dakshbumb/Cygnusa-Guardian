@@ -26,8 +26,6 @@ from resume_validator import ResumeValidator
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-ENV = os.getenv("ENV", "development")
-
 logger = logging.getLogger("cygnusa-api")
 
 # ---------------------------------------------------------------------------

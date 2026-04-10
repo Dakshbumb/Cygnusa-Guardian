@@ -16,6 +16,7 @@ Endpoints:
   GET   /api/interviews/upcoming           - List upcoming interviews
 """
 
+import os
 import uuid
 import logging
 from datetime import datetime
@@ -356,7 +357,13 @@ async def add_recruiter_note(candidate_id: str, request: Request, recruiter: dic
 
 @router.post("/api/demo/seed")
 async def seed_demo():
-    """Seed the database with demo users and candidates."""
+    """Seed the database with demo users and candidates. DEV ONLY."""
+    env = os.getenv("ENV", "development")
+    if env == "production":
+        raise HTTPException(
+            status_code=403,
+            detail="Demo seeding is disabled in production."
+        )
     try:
         from seed_demo_data import seed_all_demos
         from decision_engine import ExplainableDecisionEngine

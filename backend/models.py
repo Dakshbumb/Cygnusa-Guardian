@@ -27,9 +27,18 @@ class User(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
-class LoginRequest(BaseModel):
-    """Login request - for demo, user selects their role"""
+class RegisterRequest(BaseModel):
+    """User registration with real credentials"""
     email: str
+    password: str = Field(min_length=8, description="Must be at least 8 characters")
+    name: str = Field(min_length=2)
+    role: UserRole
+
+
+class LoginRequest(BaseModel):
+    """Login request with real password authentication"""
+    email: str
+    password: str
     role: UserRole
 
 

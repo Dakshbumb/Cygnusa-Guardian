@@ -15,7 +15,8 @@ from typing import List, Optional
 from datetime import datetime
 from models import (
     ResumeEvidence, CodeExecutionEvidence, MCQEvidence,
-    PsychometricEvidence, IntegrityEvidence, FinalDecision, TextAnswerEvidence
+    PsychometricEvidence, IntegrityEvidence, FinalDecision, TextAnswerEvidence,
+    KeystrokeEvidence, KeystrokeInterval
 )
 
 # Configure logger
@@ -72,7 +73,7 @@ class ExplainableDecisionEngine:
         psychometric_evidence: Optional[PsychometricEvidence],
         integrity_evidence: Optional[IntegrityEvidence],
         text_evidence: Optional[List[TextAnswerEvidence]] = None,
-        keystroke_evidence: Optional["KeystrokeEvidence"] = None
+        keystroke_evidence: Optional[KeystrokeEvidence] = None
     ) -> FinalDecision:
         """
         Generate final hiring decision with full audit trail.
@@ -279,7 +280,7 @@ class ExplainableDecisionEngine:
         psychometric_evidence: Optional[PsychometricEvidence],
         integrity_evidence: Optional[IntegrityEvidence],
         text_evidence: Optional[List[TextAnswerEvidence]] = None,
-        keystroke_evidence: Optional["KeystrokeEvidence"] = None
+        keystroke_evidence: Optional[KeystrokeEvidence] = None
     ) -> dict:
         """
         Build a structured summary of all evidence.
@@ -901,7 +902,7 @@ class KeystrokeDynamicsAnalyzer:
         self.baseline_keys = baseline_keys
         self.threshold_z = threshold_z
         
-    def analyze_intervals(self, candidate_id: str, new_intervals: List["KeystrokeInterval"], existing_evidence: "KeystrokeEvidence") -> "KeystrokeEvidence":
+    def analyze_intervals(self, candidate_id: str, new_intervals: List[KeystrokeInterval], existing_evidence: KeystrokeEvidence) -> KeystrokeEvidence:
         """
         Analyze a batch of keystroke intervals and update evidence.
         """
@@ -961,7 +962,7 @@ class KeystrokeDynamicsAnalyzer:
         # Determine if it's a high-confidence anomaly
         if rhythm_score < 40:
             existing_evidence.is_anomaly = True
-            existing_evidence.anomaly_reason = "Significant shift in typing rhythm detected (Bometric DNA mismatch)"
+            existing_evidence.anomaly_reason = "Significant shift in typing rhythm detected (Biometric DNA mismatch)"
         else:
             # Don't reset is_anomaly if it was already True (sticky violation)
             # but update reason if it's currently low
@@ -969,73 +970,3 @@ class KeystrokeDynamicsAnalyzer:
                 existing_evidence.anomaly_reason = "Unstable typing rhythm - monitoring for handover"
                 
         return existing_evidence
-
-
-# Demo function
-def demo_decision():
-    """Demo the decision engine"""
-    from models import ResumeEvidence, CodeExecutionEvidence, TestCaseResult
-    
-    engine = ExplainableDecisionEngine(use_gemini=False)
-    
-    # Create sample evidence
-    resume = ResumeEvidence(
-        skills_extracted=["python", "sql", "react"],
-        jd_required=["python", "sql", "react", "docker", "kubernetes"],
-        match_score=60.0,
-        reasoning="Found 3/5 required skills (60% match). Missing: docker, kubernetes.",
-        missing_critical=[]
-    )
-    
-    code = [CodeExecutionEvidence(
-        question_id="q1",
-        question_title="Fibonacci",
-        language="python",
-        submitted_code="def solution(n): ...",
-        test_cases=[
-            TestCaseResult(input="5", expected="5", actual="5", passed=True, time_ms=100),
-            TestCaseResult(input="10", expected="55", actual="55", passed=True, time_ms=120),
-        ],
-        pass_rate=100.0,
-        avg_time_ms=110.0,
-        total_tests=2
-    )]
-    
-    psych = PsychometricEvidence(
-        competencies={"resilience": 7, "leadership": 5, "learning": 8},
-        weak_areas=["leadership"],
-        strong_areas=["learning", "resilience"]
-    )
-    
-    integrity = IntegrityEvidence(
-        total_violations=1,
-        events=[],
-        severity_score=2,
-        trustworthiness_rating="Medium"
-    )
-    
-    decision = engine.generate_decision(
-        candidate_id="demo_001",
-        candidate_name="Demo Candidate",
-        resume_evidence=resume,
-        code_evidence=code,
-        mcq_evidence=[],
-        psychometric_evidence=psych,
-        integrity_evidence=integrity
-    )
-    
-    logger.info("=== Decision Generated ===")
-    logger.info(f"Outcome: {decision.outcome}")
-    logger.info(f"Confidence: {decision.confidence}")
-    logger.info(f"Reasoning:")
-    for r in decision.reasoning:
-        logger.info(f"  - {r}")
-    logger.info(f"Role Fit: {decision.role_fit}")
-    logger.info(f"Next Steps: {decision.next_steps}")
-    logger.info(f"Model Used: {decision.audit_trail['model_used']}")
-    
-    return decision
-
-
-if __name__ == "__main__":
-    demo_decision()

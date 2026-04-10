@@ -5,11 +5,14 @@ SQLAlchemy for cross-database support (SQLite/PostgreSQL)
 
 import os
 import json
+import logging
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy import create_engine, Column, String, Integer, Text, JSON, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import sessionmaker, scoped_session, declarative_base
 from models import CandidateProfile, IntegrityEvent, JobDescription, User, UserRole
+
+logger = logging.getLogger("cygnusa-db")
 
 Base = declarative_base()
 
@@ -50,6 +53,7 @@ class UserModel(Base):
     email = Column(String, unique=True)
     role = Column(String, nullable=False)
     name = Column(String, nullable=False)
+    password_hash = Column(String, nullable=True)  # nullable for migration safety
     created_at = Column(DateTime, default=datetime.utcnow)
     
     __table_args__ = (Index('idx_users_email', 'email'),)
@@ -72,8 +76,28 @@ class Database:
         self.init_db()
     
     def init_db(self):
-        """Initialize database tables"""
+        """Initialize database tables and run safe column migrations."""
         Base.metadata.create_all(self.engine)
+        self._migrate_add_password_hash()
+
+    def _migrate_add_password_hash(self):
+        """Safely add password_hash column to users table if it doesn't exist.
+        Compatible with SQLite and PostgreSQL.
+        """
+        from sqlalchemy import text
+        with self.engine.connect() as conn:
+            try:
+                # Check column exists first
+                from sqlalchemy import inspect
+                inspector = inspect(self.engine)
+                columns = [c['name'] for c in inspector.get_columns('users')]
+                if 'password_hash' not in columns:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR"))
+                    conn.commit()
+                    logger.info("DB migration: added password_hash column to users table")
+            except Exception as e:
+                # Column already exists or table doesn't exist yet — both are fine
+                logger.debug(f"Migration skip (expected): {e}")
         
     def check_connection(self) -> bool:
         """Verify database connectivity"""
@@ -83,9 +107,7 @@ class Database:
                 session.execute(text("SELECT 1"))
             return True
         except Exception as e:
-            # Import logger here to avoid circular imports if any
-            import logging
-            logging.getLogger("cygnusa-db").error(f"Database connection check failed: {e}")
+            logger.error(f"Database connection check failed: {e}")
             return False
     
     @staticmethod
@@ -145,8 +167,7 @@ class Database:
                 except Exception as ve:
                     # Forensic Recovery: If strict validation fails due to legacy schema mismatches,
                     # try to return a basic profile to avoid a 500 error.
-                    import logging
-                    logging.getLogger("cygnusa-db").warning(f"Validation failed for {candidate_id}, using loose recovery: {ve}")
+                    logger.warning(f"Validation failed for {candidate_id}, using loose recovery: {ve}")
                     # Basic reconstruction
                     data = db_candidate.data or {}
                     return CandidateProfile(
@@ -158,7 +179,6 @@ class Database:
                     )
             return None
         finally:
-            session.close() # Use close instead of remove for direct session management
             self.Session.remove()
     
     def get_all_candidates(self, status: Optional[str] = None) -> List[CandidateProfile]:
@@ -175,34 +195,53 @@ class Database:
             self.Session.remove()
 
     def get_candidates_summary(self, status: Optional[str] = None) -> List[dict]:
-        """Fetch only essential candidate columns for list views (Dashboard)"""
+        """Fetch essential candidate columns + decoded JSON fields for list views (Dashboard).
+
+        Extracts outcome, overall_score, and integrity_score from the data JSON blob
+        so the dashboard can render verdict chips and score bars without loading every candidate.
+        """
         session = self.Session()
         try:
-            query = session.query(
-                CandidateModel.id,
-                CandidateModel.name,
-                CandidateModel.email,
-                CandidateModel.job_title,
-                CandidateModel.status,
-                CandidateModel.created_at
-            )
-            
+            query = session.query(CandidateModel)
             if status:
                 query = query.filter(CandidateModel.status == status)
-            
+
             rows = query.order_by(CandidateModel.created_at.desc()).all()
-            
-            return [
-                {
+
+            result = []
+            for row in rows:
+                data = row.data or {}
+
+                # --- outcome ---
+                final_decision = data.get("final_decision") or {}
+                outcome = final_decision.get("outcome", "PENDING") if isinstance(final_decision, dict) else "PENDING"
+
+                # --- overall_score (resume match_score) ---
+                resume_evidence = data.get("resume_evidence") or {}
+                overall_score = 0.0
+                if isinstance(resume_evidence, dict):
+                    overall_score = float(resume_evidence.get("match_score") or 0)
+
+                # --- integrity_score (100 - violations*10, floored at 0) ---
+                integrity_evidence = data.get("integrity_evidence") or {}
+                integrity_score = 100
+                if isinstance(integrity_evidence, dict):
+                    violations = int(integrity_evidence.get("total_violations") or 0)
+                    integrity_score = max(0, 100 - violations * 10)
+
+                result.append({
                     "id": row.id,
                     "name": row.name,
                     "email": row.email,
                     "job_title": row.job_title,
                     "status": row.status,
-                    "created_at": row.created_at.isoformat() if hasattr(row.created_at, 'isoformat') else str(row.created_at)
-                }
-                for row in rows
-            ]
+                    "outcome": outcome,
+                    "overall_score": round(overall_score, 1),
+                    "integrity_score": integrity_score,
+                    "created_at": row.created_at.isoformat() if hasattr(row.created_at, "isoformat") else str(row.created_at),
+                })
+
+            return result
         finally:
             self.Session.remove()
     
@@ -322,22 +361,73 @@ class Database:
     
     # ==================== User Operations ====================
     
-    def save_user(self, user: User) -> None:
-        """Insert or update user"""
+    def save_user(self, user: User, password_hash: str = None) -> None:
+        """Insert or update user, optionally with a password hash"""
         session = self.Session()
         try:
-            db_user = UserModel(
-                id=user.id,
-                email=user.email,
-                role=user.role.value if hasattr(user.role, 'value') else user.role,
-                name=user.name,
-                created_at=datetime.fromisoformat(user.created_at) if hasattr(user, 'created_at') and user.created_at else datetime.utcnow()
-            )
-            session.merge(db_user)
+            existing = session.query(UserModel).filter(UserModel.id == user.id).first()
+            if existing:
+                existing.email = user.email
+                existing.role = user.role.value if hasattr(user.role, 'value') else user.role
+                existing.name = user.name
+                if password_hash is not None:
+                    existing.password_hash = password_hash
+            else:
+                db_user = UserModel(
+                    id=user.id,
+                    email=user.email,
+                    role=user.role.value if hasattr(user.role, 'value') else user.role,
+                    name=user.name,
+                    password_hash=password_hash,
+                    created_at=datetime.fromisoformat(user.created_at) if hasattr(user, 'created_at') and user.created_at else datetime.utcnow()
+                )
+                session.add(db_user)
             session.commit()
         except Exception as e:
             session.rollback()
             raise e
+        finally:
+            self.Session.remove()
+
+    def get_user_with_hash(self, email: str) -> tuple:
+        """Return (User, password_hash) tuple for login verification. Hash may be None for legacy accounts."""
+        session = self.Session()
+        try:
+            row = session.query(UserModel).filter(UserModel.email == email).first()
+            if row:
+                user = User(
+                    id=row.id,
+                    email=row.email,
+                    role=UserRole(row.role),
+                    name=row.name,
+                    created_at=row.created_at.isoformat()
+                )
+                return user, row.password_hash
+            return None, None
+        finally:
+            self.Session.remove()
+
+    def update_user_password(self, user_id: str, new_hash: str) -> bool:
+        """Admin-initiated password reset."""
+        session = self.Session()
+        try:
+            row = session.query(UserModel).filter(UserModel.id == user_id).first()
+            if not row:
+                return False
+            row.password_hash = new_hash
+            session.commit()
+            return True
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            self.Session.remove()
+
+    def user_email_exists(self, email: str) -> bool:
+        """Fast check whether an email is already registered."""
+        session = self.Session()
+        try:
+            return session.query(UserModel.id).filter(UserModel.email == email).first() is not None
         finally:
             self.Session.remove()
     

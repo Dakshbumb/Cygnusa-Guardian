@@ -1,3 +1,5 @@
+# Build from backend/: docker build -t cygnusa-backend .
+# Standalone backend build (no docker-compose needed)
 # Use Python 3.11 slim image
 FROM python:3.11-slim
 

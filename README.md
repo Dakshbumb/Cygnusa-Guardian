@@ -1,384 +1,440 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="Cygnusa Guardian Logo" width="200"/>
+<img src="assets/logo.png" alt="Cygnusa Guardian" width="140"/>
 
-# 🛡️ CYGNUSA GUARDIAN
+# Cygnusa Guardian
 
-### Glass-Box Hiring Intelligence Platform
+**Forensic Hiring Intelligence Platform — Glass-Box Decision Engine**
 
-<br/>
-
-[![Transparency](https://img.shields.io/badge/VISION-100%25_Transparent-059669?style=for-the-badge&logo=eye)](https://github.com/Dakshbumb/Cygnusa-Guardian)
-[![Integrity](https://img.shields.io/badge/SECURITY-Forensic_Grade-DC2626?style=for-the-badge&logo=shield)](https://github.com/Dakshbumb/Cygnusa-Guardian)
-[![Intelligence](https://img.shields.io/badge/AI-Explainable-2563EB?style=for-the-badge&logo=openai)](https://github.com/Dakshbumb/Cygnusa-Guardian)
-[![Reliability](https://img.shields.io/badge/ARCHITECTURE-Enterprise_Ready-7C3AED?style=for-the-badge&logo=lightning)](https://github.com/Dakshbumb/Cygnusa-Guardian)
-
-<br/>
-
-<p align="center">
-  <a href="https://cygnusa-guardian-el0vtymrt-dakshhhs-projects.vercel.app/">
-    <img src="https://img.shields.io/badge/🚀_ENTER_THE_GUARDIAN_DOMAIN-2563EB?style=for-the-badge&logoColor=white" height="50" />
-  </a>
-</p>
-
-### *"Because every hiring decision deserves an explanation."*
-
----
-
-**45+ Features** · **6 Security Layers** · **100% Transparent AI Decisions** · **Audit-Ready**
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Tests](https://img.shields.io/badge/Tests-55%20passing-059669?style=flat-square&logo=pytest)](backend/test_main.py)
 
 </div>
 
 ---
 
-## 🔮 The Problem: Black-Box Hiring
+## What Is This?
 
-> Traditional AI hiring tools are opaque. Candidates get rejected without knowing why, and recruiters trust scores they can't verify.
+Cygnusa Guardian is a production-grade **forensic hiring SaaS platform** that replaces opaque AI scoring with **fully auditable, explainable hiring decisions**. Every recommendation — HIRE, NO_HIRE, or CONDITIONAL — is backed by traceable evidence, weighted decision trees, counterfactual analysis, and a complete forensic audit trail.
 
-**Cygnusa Guardian** is the antidote. An **Explainable AI (XAI)** platform providing a complete "Glass-Box" view into hiring. Every decision—HIRE, REJECT, or CONDITIONAL—is backed by:
+The platform manages the entire end-to-end hiring pipeline:
 
-- ✅ **Transparent Evidence** — See exactly what drove each decision
-- ✅ **Counterfactual Explanations** — "What would change the outcome?"
-- ✅ **Complete Audit Trail** — Full AI prompt/response logging
-- ✅ **Human-in-the-Loop** — AI recommends, humans decide
+- 📄 **Resume forensics** — skill extraction, claim probing, credential verification
+- 💻 **Live coding assessment** — sandboxed execution, keystroke biometrics, AI shadow probing
+- 🧠 **MCQ + psychometric evaluation** — timed, proctored, with stress-response analysis
+- 👁️ **Real-time proctoring** — webcam monitoring, tab-switch detection, copy-paste blocking
+- ⚖️ **XAI decision engine** — structured Glass-Box verdicts with full evidentiary mapping
+- 📊 **Recruiter intelligence center** — forensic reports, integrity logs, bulk ops
 
----
-
-## 🏛️ System Architecture
-
-```mermaid
-flowchart TB
-    subgraph Frontend["🖥️ PRESENTATION TIER"]
-        A[React + Vite]
-        B[Framer Motion]
-        C[Monaco Editor]
-    end
-    
-    subgraph Backend["⚙️ APPLICATION TIER"]
-        D[FastAPI Gateway]
-        E[Resume Parser]
-        F[Code Sandbox]
-        G[Decision Engine]
-        H[Shadow Proctor]
-    end
-    
-    subgraph Data["💾 DATA & AI TIER"]
-        I[(Supabase PostgreSQL)]
-        J[Google Gemini Pro]
-        K[OpenAI Fallback]
-        L[(SQLite Backup)]
-    end
-    
-    subgraph Security["🔐 SECURITY LAYER"]
-        M[Face Detection]
-        N[Device Fingerprint]
-        O[Integrity Monitor]
-    end
-    
-    Frontend --> Backend
-    Backend --> Data
-    Security -.-> Frontend
-    Security -.-> Backend
-```
-
-| Layer | Technologies | Purpose |
-|:------|:-------------|:--------|
-| **Frontend** | React, Vite, Tailwind, Framer Motion | Immersive UI & Animations |
-| **Backend** | Python FastAPI, Pydantic | Async API & Business Logic |
-| **Database** | Supabase PostgreSQL + SQLite Fallback | Reliable Data Persistence |
-| **AI** | Google Gemini Pro + OpenAI GPT-4 | Explainable Decision Generation |
-| **Sandbox** | Subprocess + Timeout Isolation | Secure Code Execution |
-| **Deploy** | Vercel (FE) + Render (BE) | Global Delivery |
+**Core principle:** The AI never produces a hidden score. All evidence is pre-calculated, verified, and passed verbatim to the reasoning engine. The raw prompt, raw response, and every decision path are stored and viewable in the audit trail.
 
 ---
 
-## ✨ Feature Showcase
-
-<table>
-<tr>
-<td width="50%">
-
-### 🧠 Smart Resume Gatekeeper
-> *Deterministic First, AI Second*
-
-- **Entity Extraction** — Parses skills, education, experience
-- **Fair Scoring** — Match % based on explicit job requirements
-- **Claim Verification** — Flags "led team of 20" for probing
-- **Glass-Box Visuals** — See exactly which keywords matched
-
-</td>
-<td width="50%">
-
-### ⚔️ Dual Assessment Arena
-> *Hard Skills Meet Soft Skills*
-
-- **Coding Sandbox** — Real-time Python with hidden test cases
-- **Partial Credit** — Near-miss detection, Levenshtein scoring
-- **Psychometric Profiling** — Resilience, teamwork, leadership
-- **Scenario MCQs** — Situational judgment under pressure
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🛡️ Integrity Shield
-> *Trust, But Verify*
-
-- **Real-Time Proctoring** — Tab switch, copy/paste detection
-- **Face Detection** — Baseline capture, multi-face alerts
-- **Typing Burst Detection** — Flags >40 chars in <300ms
-- **Device Fingerprinting** — Unique browser/GPU signature
-
-</td>
-<td width="50%">
-
-### 🤖 Explainable Decision Engine
-> *The "Why" Behind the "What"*
-
-- **Structured Rationale** — 3-point reasoning summary
-- **Counterfactuals** — "If coding was 70%+, outcome = CONDITIONAL"
-- **Evidentiary Mapping** — PRIMARY, SUPPORTING, NEGATIVE factors
-- **Complete Audit Trail** — Full prompt + raw AI response
-
-</td>
-</tr>
-</table>
-
----
-
-## 🔐 Security & Anti-Cheat Matrix
-
-| Layer | Feature | Detection Method |
-|:------|:--------|:-----------------|
-| 👁️ **Visual** | Face Detection Proctoring | TensorFlow Face-API, baseline comparison |
-| 👁️ **Visual** | Multi-Face / No-Face Alerts | Real-time webcam analysis |
-| 🖥️ **Browser** | Tab Switch Detection | `visibilitychange` + `blur` events |
-| 🖥️ **Browser** | Fullscreen Enforcement | Exit = logged violation |
-| ⌨️ **Input** | Copy/Paste Blocking | `e.preventDefault()` on clipboard events |
-| ⌨️ **Input** | Typing Burst Detection | Timestamp analysis threshold |
-| ⌨️ **Input** | Keyboard Shortcuts Blocked | Ctrl+C/V/X, Alt+Tab intercepted |
-| 🔧 **Code** | Banned Import Detection | `os, subprocess, socket, requests` blocked |
-| 🔧 **Code** | Execution Timeout | 10 second max runtime |
-| 🆔 **Identity** | Device Fingerprinting | Browser, GPU, Canvas, Timezone hash |
-| 🎯 **Verification** | Shadow Probe Interview | AI follow-up: "Why hash map on line 12?" |
-| ⚖️ **Scoring** | Violation Severity Weights | Critical(10), High(5), Medium(2), Low(1) |
-
----
-
-## 📊 Grading Accuracy System
-
-<table>
-<tr>
-<td width="60%">
-
-### Partial Credit Scoring
-```python
-# Near-miss detection with tolerance
-if abs(expected - actual) / expected <= 0.01:  # 1%
-    return "FULL_CREDIT"
-elif abs(expected - actual) / expected <= 0.05:  # 5%
-    return "PARTIAL_CREDIT_HIGH"
-elif abs(expected - actual) / expected <= 0.10:  # 10%
-    return "PARTIAL_CREDIT_LOW"
-
-# String similarity via Levenshtein
-similarity = 1 - (distance / max_len)
-if similarity >= 0.50:
-    return f"PARTIAL: {similarity * 100}%"
-```
-
-</td>
-<td width="40%">
-
-### Competency Mapping
-| Area | Assessment |
-|:-----|:-----------|
-| Machine Learning | MCQ + Code |
-| Data Structures | Code + Probe |
-| Frontend (React) | MCQ |
-| System Design | Text + MCQ |
-| Databases | MCQ + Code |
-
-</td>
-</tr>
-</table>
-
-### Decision Thresholds
-| Outcome | Criteria |
-|:--------|:---------|
-| ✅ **AUTO-HIRE** | Coding ≥80% + Resume ≥70% |
-| ⚠️ **CONDITIONAL** | Mixed signals, needs human review |
-| ❌ **AUTO-REJECT** | Coding <30% or critical skill gaps |
-
----
-
-## 🔍 Logic Transparency Features
+## User Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         TRANSPARENCY LAYER                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  📊 EVIDENTIARY MAPPING           🔄 COUNTERFACTUAL ENGINE                 │
-│  ┌────────────────────────┐       ┌────────────────────────┐               │
-│  │ 🟢 PRIMARY_DRIVER      │       │ "If coding was 70%+,   │               │
-│  │ 🟡 SUPPORTING          │       │  outcome would be      │               │
-│  │ 🔴 NEGATIVE            │       │  CONDITIONAL instead   │               │
-│  │ ⚪ NEUTRAL             │       │  of NO_HIRE"           │               │
-│  └────────────────────────┘       └────────────────────────┘               │
-│                                                                             │
-│  📝 REASONING ARRAY               🧬 COGNITIVE PROFILING                   │
-│  ┌────────────────────────┐       ┌────────────────────────┐               │
-│  │ 1. Strong coding (85%) │       │ • Systematic Solver    │               │
-│  │ 2. Relevant experience │       │ • Creative Innovator   │               │
-│  │ 3. Minor integrity flag│       │ • Analytical Thinker   │               │
-│  └────────────────────────┘       └────────────────────────┘               │
-│                                                                             │
-│  📜 AUDIT TRAIL                   ⏱️ FORENSIC TIMELINE                     │
-│  ┌────────────────────────┐       ┌────────────────────────┐               │
-│  │ Full Prompt → AI       │       │ RESUME → CODE → MCQ →  │               │
-│  │ Raw Response ← AI      │       │ TEXT → INTEGRITY →     │               │
-│  │ Model: gemini-pro      │       │ FINAL DECISION         │               │
-│  │ Timestamp: ISO8601     │       │                        │               │
-│  └────────────────────────┘       └────────────────────────┘               │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+Landing Page (/)
+     │
+     ├──► Recruiter Portal (/login?role=recruiter)
+     │         │
+     │         └──► Dashboard (/recruiter/dashboard)
+     │                  │
+     │                  ├──► Forensic Report (/recruiter/:candidateId)
+     │                  └──► Live Monitor (/monitor)
+     │
+     └──► Candidate Portal (/login?role=candidate)
+               │
+               └──► Resume Upload (/resume-analysis)
+                        │
+                        └──► Assessment (/candidate/:id)
+                                  │
+                                  ├── Coding Challenge
+                                  ├── MCQ Evaluation
+                                  ├── Reasoning Test
+                                  └── Psychometric Profile
 ```
 
 ---
 
-## 🎨 User Experience
+## Architecture
 
-| Feature | Description |
-|:--------|:------------|
-|  **Dark Theme** | Premium aesthetic with `#0a0a0a` base, teal accents |
-|  **Framer Motion** | Smooth page transitions, staggered lists, hover effects |
-|  **Responsive Grid** | Mobile → Tablet → Desktop breakpoints |
-|  **Skeleton Loaders** | Shimmer placeholders for all async content |
-|  **Progress Stepper** | Visual assessment flow with completion states |
-|  **Decision Cards** | Rich visualization with scores, evidence, actions |
-|  **Monaco Editor** | Syntax highlighting, multi-language code editor |
-|  **Code Splitting** | React.lazy() + Suspense for optimized bundles |
-|  **Error Boundaries** | Graceful error display with retry actions |
-|  **Case File Export** | Download complete candidate dossier as JSON |
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        CLIENT (React + Vite)                        │
+│  ┌──────────┐ ┌──────────────┐ ┌─────────────┐ ┌───────────────┐  │
+│  │ Landing  │ │  Candidate   │ │  Recruiter  │ │ Live Monitor  │  │
+│  │  Page    │ │  Assessment  │ │  Dashboard  │ │     Page      │  │
+│  └──────────┘ └──────────────┘ └─────────────┘ └───────────────┘  │
+│ ┌──────────────────────────────────────────────────────────────┐   │
+│ │  IntegrityMonitor · WebcamProctor · ShadowProber · Monaco    │   │
+│ └──────────────────────────────────────────────────────────────┘   │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │ REST API (JSON + JWT)
+┌────────────────────────────────┴────────────────────────────────────┐
+│                      SERVER (FastAPI + Uvicorn)                     │
+│  ┌──────────┐ ┌──────────────┐ ┌─────────────┐ ┌───────────────┐  │
+│  │  Auth    │ │   Resume     │ │  Assessment │ │  Integrity    │  │
+│  │  Router  │ │   Router     │ │   Router    │ │  Router       │  │
+│  └──────────┘ └──────────────┘ └─────────────┘ └───────────────┘  │
+│  ┌──────────┐ ┌──────────────┐ ┌──────────────────────────────┐   │
+│  │Dashboard │ │   Reports    │ │       Core Services           │   │
+│  │  Router  │ │   Router     │ │  ResumeParser · CodeExecutor  │   │
+│  └──────────┘ └──────────────┘ │  DecisionEngine · Validator   │   │
+│                                └──────────────────────────────┘   │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              │                  │                  │
+     ┌────────┴───────┐  ┌──────┴──────┐  ┌───────┴────────┐
+     │   Supabase     │  │   Google    │  │   SQLite       │
+     │   PostgreSQL   │  │  Gemini Pro │  │  (local dev)   │
+     └────────────────┘  └─────────────┘  └────────────────┘
+```
+
+**Three-tier architecture:**
+
+- **Presentation** — React SPA with lazy-loaded routes, Framer Motion transitions, and client-side integrity hooks
+- **Application** — FastAPI with 7 domain routers, Pydantic v2 models, GZip middleware, and structured logging
+- **Data & AI** — Supabase PostgreSQL primary, SQLite fallback, Google Gemini Pro for XAI reasoning
 
 ---
 
-## 🚀 Quick Start
+## Core Modules
 
-### Backend
-```bash
-cd backend
-python -m venv venv
-# Windows: venv\Scripts\activate
-# Mac/Linux: source venv/bin/activate
-pip install -r requirements.txt
-python main.py
+### 1. Resume Forensics (`resume_parser.py`)
+
+Extracts skills, education, and work history from PDF/DOCX uploads using `pdfplumber` and `python-docx`. Each matched skill retains its **context snippet** — the exact sentence from the resume proving the claim — so recruiters see evidence, not just a percentage.
+
+Includes a **Claim Probing Engine** that flags suspicious claims (inflated CGPA, vague impact metrics, unverifiable leadership roles) and generates targeted verification questions.
+
+### 2. Sandboxed Code Executor (`code_executor.py`)
+
+| Feature | Detail |
+|:--------|:-------|
+| Execution timeout | 10 seconds per test case |
+| Banned imports | `os`, `subprocess`, `socket`, `requests` blocked at AST level |
+| Partial credit | Numeric tolerance bands (1%/5%/10%) + Levenshtein similarity for near-miss outputs |
+| Stress timing | Flags rushing (<60s) and overthinking (>15min) per question |
+
+### 3. XAI Decision Engine (`decision_engine.py`, ~1000 LOC)
+
+Three-phase pipeline:
+
+1. **Evidence Aggregation** — All pre-calculated scores collected into a structured `evidence_summary`. No data is hidden from the AI.
+2. **Deterministic Gatekeeper** — Auto-reject rules fire first (missing critical skills, ≥5 integrity violations, both resume and coding below 30%). Rule-based decisions require no LLM call.
+3. **AI Reasoning** — Transparent prompt built with all raw evidence. LLM returns structured JSON: outcome, confidence, conflict analysis, evidentiary mapping, forensic trace, and cognitive profile.
+
+Every decision includes:
+- **Counterfactual explanations** — "If coding score was 70%+, outcome would change from NO_HIRE to HIRE"
+- **Transparency token** — unique audit ID linking the decision to stored prompt/response
+- **Full audit trail** — exact prompt sent and raw response received, viewable in the recruiter dashboard
+
+### 4. Integrity Monitor (`IntegrityMonitor.jsx`)
+
+Browser-side proctoring system:
+
+| Event | Detection | Severity |
+|:------|:----------|:---------|
+| Tab switch | `visibilitychange` + `blur` | High |
+| Copy/Paste | `clipboard` event interception | High |
+| Fullscreen exit | `fullscreenchange` listener | Medium |
+| Keyboard shortcuts | `keydown` for Ctrl+C/V/X, Alt+Tab | Medium |
+| Typing burst | >40 characters in <300ms | High |
+| Banned imports | Real-time AST scan | Critical |
+
+All events are timestamped, streamed to the backend, and surfaced in the recruiter's forensic integrity log.
+
+### 5. Shadow Prober (`ShadowProber.jsx`)
+
+After code submission, the system sends the candidate's implementation to Gemini to generate a **context-aware follow-up question** targeting a specific algorithmic choice (e.g., _"Why did you use a hash map instead of a sorted array on line 12?"_). The candidate must answer immediately — preventing post-hoc rationalization.
+
+### 6. Webcam Proctor (`WebcamProctor.jsx`)
+
+Periodic frame capture every 30 seconds with client-side face detection. Tracks **face detection rate** across the session and flags: no face detected, multiple faces, or candidate leaving frame during high-difficulty questions.
+
+---
+
+## Decision Engine Flow
+
 ```
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-```env
-# Backend (.env)
-GEMINI_API_KEY=your_gemini_key
-OPENAI_API_KEY=your_openai_key
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
-
-# Frontend (.env)
-VITE_API_URL=http://localhost:8000
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+Resume Upload      Coding Assessment      MCQ + Text         Integrity Events
+     │                    │                    │                     │
+     ▼                    ▼                    ▼                     ▼
+┌──────────┐       ┌────────────┐        ┌──────────┐         ┌───────────┐
+│  Parse   │       │  Sandbox   │        │  Score   │         │ Aggregate │
+│  & Match │       │  Execute   │        │  & Map   │         │  & Weight │
+└────┬─────┘       └─────┬──────┘        └────┬─────┘         └─────┬─────┘
+     └────────────────────┴─────────────────────┴───────────────────┘
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │  Deterministic Rules   │──► Auto-reject? ──► Rule-based decision
+                        │  (Gatekeeper)          │                     (no LLM call)
+                        └───────────┬────────────┘
+                                    │ Ambiguous case
+                                    ▼
+                        ┌───────────────────────┐
+                        │  Transparent Prompt    │
+                        │  (all evidence inline) │
+                        └───────────┬────────────┘
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │  Gemini Pro / GPT-4    │
+                        │  (structured JSON out) │
+                        └───────────┬────────────┘
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │  Parse + Validate +    │
+                        │  Generate Counterfacts │
+                        │  + Store Audit Trail   │
+                        └───────────────────────┘
+                                    │
+                                    ▼
+                            FinalDecision object
+                    (outcome · reasoning · evidence map ·
+                     counterfactuals · audit trail · token)
 ```
 
 ---
 
-## 🧪 Try the Live Demo
+## Tech Stack
 
-We've seeded the production database with demo profiles showcasing different outcomes:
-
-| Profile | Role | Outcome | What It Demonstrates |
-|:--------|:-----|:--------|:---------------------|
-| **Alice Chen** | Senior Dev | ✅ HIRE | Perfect code + high resume match |
-| **Bob Smith** | Junior Dev | ⚠️ CONDITIONAL | Good skills, integrity violations |
-| **Charlie Davis** | Intern | ❌ NO_HIRE | Missing critical skills, auto-rejected |
-
-<div align="center">
-
-<br/>
-
-<a href="https://cygnusa-guardian-el0vtymrt-dakshhhs-projects.vercel.app/">
-  <img src="https://img.shields.io/badge/🔐_Login_as_Recruiter-recruiter@demo.com-059669?style=for-the-badge" />
-</a>
-
-<br/><br/>
-
-<a href="https://cygnusa-guardian-el0vtymrt-dakshhhs-projects.vercel.app/">
-  <img src="https://img.shields.io/badge/👤_Login_as_Candidate-candidate@demo.com-2563EB?style=for-the-badge" />
-</a>
-
-</div>
+| Layer | Technology | Notes |
+|:------|:-----------|:------|
+| **Frontend** | React 18, Vite, Tailwind CSS | Lazy-loaded routes, fast HMR |
+| **UI Design** | Stitch (Google) + Aegis Violet design system | Dark forensic aesthetic, glassmorphism |
+| **Animations** | Framer Motion | Page transitions, staggered animations |
+| **Code Editor** | Monaco Editor | VS Code engine — syntax highlighting, IntelliSense |
+| **Charts** | Chart.js + react-chartjs-2 | Radar charts, timing analysis |
+| **Backend** | Python 3.11, FastAPI, Pydantic v2 | Async handlers, auto OpenAPI docs |
+| **AI Engine** | Google Gemini Pro (primary), GPT-4 (fallback) | Dual-provider resilience |
+| **Database** | Supabase PostgreSQL (primary), SQLite (local) | Managed Postgres + zero-config fallback |
+| **Auth** | PyJWT, RBAC | Role-based tokens: recruiter / candidate |
+| **PDF Parsing** | pdfplumber, python-docx | Deep text extraction |
+| **Deployment** | Vercel (frontend), Render (backend) | Edge CDN for SPA, managed Python runtime |
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 cygnusa-guardian/
-├── 📂 frontend/
-│   ├── 📂 src/
-│   │   ├── 📂 components/
-│   │   │   ├── 📂 dashboard/          # Recruiter dashboard
-│   │   │   ├── 📂 ui/                 # Reusable UI (Skeleton, etc.)
-│   │   │   ├── IntegrityMonitor.jsx   # Proctoring system
-│   │   │   ├── ShadowProber.jsx       # AI follow-up interviewer
-│   │   │   └── WebcamProctor.jsx      # Face detection
-│   │   ├── 📂 pages/
-│   │   │   ├── CandidateFlow.jsx      # Assessment orchestration
-│   │   │   ├── RecruiterDashboard.jsx # Candidate management
-│   │   │   └── HomePage.jsx           # Landing page
-│   │   └── 📂 utils/
-│   │       ├── api.js                 # Backend API client
-│   │       └── deviceFingerprint.js   # Security fingerprinting
-│   └── package.json
-│
-├── 📂 backend/
-│   ├── main.py                        # FastAPI entry point
-│   ├── code_executor.py               # Secure sandbox
-│   ├── decision_engine.py             # AI decision logic
-│   ├── resume_parser.py               # Resume processing
-│   ├── models.py                      # Pydantic models
-│   ├── database.py                    # Database operations
+├── backend/
+│   ├── main.py                    # FastAPI app, middleware, CORS, health endpoints
+│   ├── config.py                  # Environment and service configuration
+│   ├── dependencies.py            # Singleton service injection (DB, DecisionEngine)
+│   ├── models.py                  # 20+ Pydantic models (evidence types, decisions)
+│   ├── auth.py                    # JWT generation and validation
+│   ├── resume_parser.py           # Skill extraction, JD matching, claim detection
+│   ├── resume_validator.py        # File type/size validation
+│   ├── code_executor.py           # Sandboxed Python execution, partial credit
+│   ├── decision_engine.py         # Three-phase XAI decision pipeline (~970 LOC)
+│   ├── database.py                # SQLAlchemy data access layer (SQLite + PostgreSQL)
+│   ├── domain_questions.json      # Coding + MCQ questions by role
+│   ├── job_roles.json             # Job description templates and skill maps
+│   ├── mcq_questions.json         # MCQ question bank (34 questions, 12 domains)
+│   ├── coding_questions.json      # Coding challenges with test cases
+│   ├── routers/
+│   │   ├── auth.py                # Login, registration, token refresh
+│   │   ├── candidates.py          # CRUD for candidate profiles
+│   │   ├── resume.py              # Upload, parse, analyze resumes
+│   │   ├── assessment.py          # Code execution, MCQ scoring, text evaluation
+│   │   ├── integrity.py           # Violation logging, webcam snapshots
+│   │   ├── reports.py             # Decision generation, case file export
+│   │   └── dashboard.py           # Analytics, bulk ops, live monitoring
+│   ├── test_main.py               # API integration tests
+│   ├── test_decision_engine.py    # Decision engine unit tests
+│   ├── test_extended.py           # Extended coverage
 │   └── requirements.txt
 │
-├── 📂 docs/
-│   ├── ARCHITECTURE.md                # System design
-│   ├── FEATURES.md                    # Complete feature catalog
-│   ├── GRADING_ACCURACY.md            # Scoring algorithms
-│   ├── API_REFERENCE.md               # Endpoint documentation
-│   └── SECURITY_ANTICHEAT.md          # Security implementation
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx                # Route definitions, lazy loading, AnimatePresence
+│   │   ├── pages/
+│   │   │   ├── HomePage.jsx           # Landing page with role-based CTA
+│   │   │   ├── LoginPage.jsx          # Auth with ?role= pre-selection
+│   │   │   ├── CandidateFlow.jsx      # Multi-stage assessment (Coding/MCQ/Psychometric)
+│   │   │   ├── RecruiterDashboard.jsx # Individual candidate forensic report
+│   │   │   ├── DashboardMain.jsx      # Candidate roster, analytics, bulk ops
+│   │   │   ├── ResumeAnalysisPage.jsx # Resume upload and analysis
+│   │   │   ├── LiveMonitorPage.jsx    # Real-time session monitoring
+│   │   │   ├── BulkCandidateDetail.jsx# Bulk-imported candidate view
+│   │   │   └── SharedReportPage.jsx   # Public shareable forensic report
+│   │   ├── components/
+│   │   │   ├── IntegrityMonitor.jsx   # Browser proctoring hooks
+│   │   │   ├── WebcamProctor.jsx      # Periodic face detection capture
+│   │   │   ├── ShadowProber.jsx       # AI context-aware follow-up probing
+│   │   │   ├── CodeEditor.jsx         # Monaco-based code editor
+│   │   │   ├── DecisionCard.jsx       # Rich decision visualization
+│   │   │   ├── DecisionTimeline.jsx   # Scrubbable evidence timeline
+│   │   │   ├── AuditTrail.jsx         # Raw prompt/response viewer
+│   │   │   ├── ClaimProber.jsx        # Resume claim verification UI
+│   │   │   ├── ResumeAuthenticityPanel.jsx
+│   │   │   ├── dashboard/             # Dashboard sub-components
+│   │   │   └── ui/                    # Skeleton loaders, shared UI primitives
+│   │   └── utils/
+│   │       ├── api.js                 # Axios API client with JWT interceptors
+│   │       └── deviceFingerprint.js   # Browser/GPU/Canvas fingerprinting
+│   └── package.json
 │
-└── 📂 assets/
-    └── logo.png                       # Cygnusa Guardian logo
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── FEATURES.md
+│   ├── GRADING_ACCURACY.md
+│   ├── SECURITY_ANTICHEAT.md
+│   ├── API_REFERENCE.md
+│   ├── LOGIC_TRANSPARENCY.md
+│   ├── CODE_QUALITY.md
+│   └── USER_EXPERIENCE.md
+│
+├── docker-compose.yml
+├── render.yaml
+├── Dockerfile
+└── assets/
+    └── logo.png
 ```
-
 
 ---
 
-<div align="center">
+## Getting Started
 
-**Built with 💜 for the Future of Hiring**
+### Prerequisites
 
-<br/>
+- Python 3.11+
+- Node.js 18+
+- [Google Gemini API key](https://makersuite.google.com/app/apikey) (free tier works)
+- (Optional) Supabase project for PostgreSQL — falls back to SQLite without it
 
-[![MIT License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+### 1. Clone
 
-MIT © 2026 Cygnusa Guardian
+```bash
+git clone https://github.com/Dakshbumb/Cygnusa-Guardian.git
+cd Cygnusa-Guardian
+```
 
-</div>
+### 2. Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # macOS/Linux
+pip install -r requirements.txt
+```
+
+Create `backend/.env`:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+JWT_SECRET_KEY=your_jwt_secret_key
+
+# Optional — omit to use SQLite fallback
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+```bash
+uvicorn main:app --reload
+# API server: http://localhost:8000
+# Interactive docs: http://localhost:8000/docs
+```
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+npm install
+```
+
+Create `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+```bash
+npm run dev
+# App: http://localhost:5173
+```
+
+### 4. Docker (Alternative)
+
+```bash
+docker-compose up --build
+# Backend: http://localhost:8000
+# Frontend: http://localhost:80
+```
+
+---
+
+## API Overview
+
+All endpoints are prefixed with `/api` and documented via FastAPI's OpenAPI spec at `/docs`.
+
+| Domain | Key Endpoints | Purpose |
+|:-------|:-------------|:--------|
+| **Auth** | `POST /api/auth/login`, `POST /api/auth/register` | JWT login with role selection |
+| **Candidates** | `GET /api/candidates`, `POST /api/candidates/create` | Profile CRUD |
+| **Resume** | `POST /api/resume/upload`, `POST /api/resume/analyze` | Upload + AI parsing |
+| **Assessment** | `POST /api/assessment/execute-code`, `POST /api/assessment/submit-mcq` | Sandboxed execution, MCQ scoring |
+| **Integrity** | `POST /api/integrity/log-event`, `POST /api/integrity/snapshot` | Violation logging |
+| **Reports** | `POST /api/reports/generate-decision`, `GET /api/reports/case-file` | XAI decisions + HTML export |
+| **Dashboard** | `GET /api/dashboard/candidates`, `GET /api/dashboard/analytics` | Roster + aggregate stats |
+| **Health** | `GET /api/health` | DB status, AI engine status, env info |
+
+Full reference: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
+
+---
+
+## Testing
+
+```bash
+cd backend
+pytest                           # Run all 55 tests
+pytest test_decision_engine.py   # XAI decision engine unit tests
+pytest test_main.py              # API integration tests
+pytest test_extended.py          # Extended coverage
+```
+
+Test coverage includes:
+- Decision engine auto-reject rules and LLM fallback behavior
+- Sandboxed code executor timeouts and banned import detection
+- API endpoint request/response schema validation
+- Resume parsing edge cases
+
+---
+
+## Deployment
+
+| Service | Platform | Config |
+|:--------|:---------|:-------|
+| Frontend | Vercel | Auto-deploy from `main` branch |
+| Backend | Render | [`render.yaml`](render.yaml) — Python 3.11 |
+| Database | Supabase | Managed PostgreSQL with connection pooling |
+
+---
+
+## Documentation
+
+| Document | Contents |
+|:---------|:---------|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, data flow, component interactions |
+| [FEATURES.md](docs/FEATURES.md) | Complete feature catalog |
+| [GRADING_ACCURACY.md](docs/GRADING_ACCURACY.md) | Scoring algorithms, partial credit, tolerance bands |
+| [SECURITY_ANTICHEAT.md](docs/SECURITY_ANTICHEAT.md) | Proctoring system, anti-cheat implementation |
+| [API_REFERENCE.md](docs/API_REFERENCE.md) | Endpoint documentation with request/response schemas |
+| [LOGIC_TRANSPARENCY.md](docs/LOGIC_TRANSPARENCY.md) | XAI transparency layer, audit trail design |
+| [CODE_QUALITY.md](docs/CODE_QUALITY.md) | Code standards, type safety |
+| [USER_EXPERIENCE.md](docs/USER_EXPERIENCE.md) | UX design decisions |
+
+---
+
+## License
+
+MIT © 2026 Cygnusa Guardian — see [LICENSE](LICENSE) for details.

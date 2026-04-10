@@ -166,10 +166,6 @@ class ResumeGatekeeper:
             except Exception:
                 return ""
 
-    def _extract_text(self, pdf_path: str) -> str:
-        """Deprecated: Use the static ``extract_text`` method instead."""
-        return self.extract_text(pdf_path)
-    
     def _extract_skills_with_context(self, text: str) -> Tuple[List[str], Dict[str, str]]:
         """
         Extract skills and return context snippets.
@@ -490,53 +486,3 @@ class ClaimExtractor:
                 seen.add(key)
                 unique.append(claim)
         return unique
-
-# Demo function for testing
-def demo_parse():
-    """Demo the resume parser with sample data"""
-    # Create a sample text file for testing
-    sample_text = """
-    John Doe
-    Software Engineer with 5 years of experience
-    
-    Skills: Python, JavaScript, React, Docker, PostgreSQL, Git
-    
-    Education: Bachelor's in Computer Science
-    
-    Experience:
-    - Built microservices using Python and FastAPI
-    - Frontend development with React and TypeScript
-    - Container orchestration with Kubernetes
-    """
-    
-    # Write sample to temp file
-    import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-        f.write(sample_text)
-        temp_path = f.name
-    
-    # Parse
-    gatekeeper = ResumeGatekeeper(
-        jd_skills=["python", "javascript", "react", "docker", "kubernetes", "postgresql"],
-        critical_skills=["python", "docker"]
-    )
-    
-    evidence = gatekeeper.parse_resume(temp_path)
-    rank, justification = gatekeeper.rank_candidate(evidence)
-    
-    logger.info("=== Resume Analysis ===")
-    logger.info(f"Skills Found: {evidence.skills_extracted}")
-    logger.info(f"Match Score: {evidence.match_score}%")
-    logger.info(f"Reasoning: {evidence.reasoning}")
-    logger.info(f"Rank: {rank}")
-    logger.info(f"Justification: {justification}")
-    
-    # Cleanup
-    import os
-    os.remove(temp_path)
-    
-    return evidence
-
-
-if __name__ == "__main__":
-    demo_parse()

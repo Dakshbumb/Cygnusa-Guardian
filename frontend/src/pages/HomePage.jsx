@@ -1,304 +1,244 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../utils/api';
-import {
-    Shield, Users, FileSearch, Code, Brain, Eye,
-    ArrowRight, Plus, Loader2, CheckCircle, XCircle,
-    AlertTriangle, Sparkles, ChevronRight
-} from 'lucide-react';
-import { ForensicLoader } from '../components/ForensicLoader';
-import { Header } from '../components/Header';
+import { useNavigate } from 'react-router-dom';
 
-/**
- * HomePage - Landing page and candidate list
- */
 export function HomePage() {
     const navigate = useNavigate();
-    const [candidates, setCandidates] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [seeding, setSeeding] = useState(false);
-
-    useEffect(() => {
-        loadCandidates();
-    }, []);
-
-    const loadCandidates = async () => {
-        try {
-            const response = await api.listCandidates();
-            setCandidates(response.data.candidates || []);
-        } catch (err) {
-            console.error('Failed to load candidates:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const seedDemoData = async () => {
-        setSeeding(true);
-        try {
-            await api.seedDemo();
-            await loadCandidates();
-        } catch (err) {
-            console.error('Failed to seed demo data:', err);
-        } finally {
-            setSeeding(false);
-        }
-    };
-
-    const getOutcomeIcon = (decision) => {
-        if (!decision) return <AlertTriangle className="text-gray-400" size={18} />;
-        switch (decision.outcome) {
-            case 'HIRE':
-                return <CheckCircle className="text-green-500" size={18} />;
-            case 'CONDITIONAL':
-                return <AlertTriangle className="text-amber-500" size={18} />;
-            default:
-                return <XCircle className="text-red-500" size={18} />;
-        }
-    };
 
     return (
-        <div className="min-h-screen bg-surface-base text-neutral-50 font-sans selection:bg-primary-500 selection:text-white flex flex-col">
-            <Header />
+        <div className="bg-surface-dim text-on-surface font-body min-h-screen">
+            {/* TopNavBar */}
+            <nav className="fixed top-0 w-full z-50 bg-[#0A0B0F]/70 backdrop-blur-xl shadow-2xl shadow-black/50 border-b border-outline-variant/10">
+                <div className="flex justify-between items-center px-8 py-4 max-w-[1440px] mx-auto w-full">
+                    <div className="text-xl font-bold tracking-tighter text-slate-50 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary">shield</span>
+                        Cygnusa Guardian
+                    </div>
+                    <div className="hidden md:flex gap-8 text-sm tracking-tight">
+                        <a className="text-primary font-semibold border-b border-primary transition-colors duration-300" href="#platform">Platform</a>
+                        <a className="text-slate-400 hover:text-slate-100 transition-colors duration-300" href="#features">Features</a>
+                        <a className="text-slate-400 hover:text-slate-100 transition-colors duration-300" href="#how-it-works">How It Works</a>
+                        <a className="text-slate-400 hover:text-slate-100 transition-colors duration-300" href="#security">Security</a>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/login?role=candidate')}
+                            className="text-slate-400 hover:text-slate-100 text-sm active:scale-95 transition-all"
+                        >
+                            Candidate Portal
+                        </button>
+                        <button
+                            onClick={() => navigate('/login?role=recruiter')}
+                            className="bg-primary-container text-on-primary-container px-4 py-2 font-semibold text-sm active:scale-95 transition-all rounded-lg"
+                        >
+                            Recruiter Portal
+                        </button>
+                    </div>
+                </div>
+            </nav>
 
-            {/* Live Metrics Ticker */}
-            <div className="bg-surface-elevated border-b border-surface-overlay overflow-hidden py-2">
-                <div className="flex animate-marquee whitespace-nowrap gap-12 text-xs font-mono text-primary-300 opacity-80">
-                    {[
-                        "SYSTEM: ONLINE",
-                        "INTEGRITY: 99.8%",
-                        "CANDIDATES_QUEUED: 14",
-                        "LAST_DECISION: HIRE (CONFIDENCE 94%)",
-                        "ENCRYPTION: AES-256",
-                        "AUDIT_LOG: ACTIVE",
-                        "AI_MODEL: CYGNUSA-V4",
-                        "LATENCY: 42ms"
-                    ].map((item, i) => (
-                        <span key={i} className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-success-500 animate-pulse" />
-                            {item}
+            <main className="pt-20 pb-24">
+                {/* Hero Section */}
+                <section id="platform" className="relative max-w-7xl mx-auto px-6 py-28 text-center overflow-hidden">
+                    <div className="absolute inset-0 hero-glow -z-10"></div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-high border border-outline-variant/30 mb-8">
+                        <span className="material-symbols-outlined text-primary text-sm">shield</span>
+                        <span className="font-label text-[10px] tracking-[0.2em] uppercase text-primary">FORENSIC HIRING PROTOCOL v2.0</span>
+                    </div>
+                    <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 leading-[1.1]">
+                        Hiring Decisions,<br/>
+                        <span className="bg-gradient-to-r from-primary via-primary-container to-secondary bg-clip-text text-transparent">
+                            Mathematically Proven.
                         </span>
-                    ))}
-                </div>
-            </div>
-
-            {/* Hero Section */}
-            <header className="relative pt-20 pb-32 overflow-hidden">
-                {/* Background Grid */}
-                <div className="absolute inset-0 opacity-20 pointer-events-none">
-                    <div className="absolute inset-0" style={{
-                        backgroundImage: `linear-gradient(to right, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
-                                        linear-gradient(to bottom, rgba(99, 102, 241, 0.05) 1px, transparent 1px)`,
-                        backgroundSize: '40px 40px'
-                    }} />
-                    <div className="absolute inset-0 bg-gradient-to-b from-surface-base via-transparent to-surface-base" />
-                </div>
-
-                <div className="relative max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12 items-center">
-                    <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-900/50 border border-primary-700/50 text-primary-300 text-xs font-mono mb-6">
-                            <Shield size={12} />
-                            <span>FORENSIC HIRING PROTOCOL v2.0</span>
+                    </h1>
+                    <p className="max-w-2xl mx-auto text-on-surface-variant text-lg md:text-xl mb-12">
+                        Cygnusa Guardian creates a glass-box forensic record of every candidate's skills, integrity, and cognitive architecture. No black boxes. No guesswork.
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-20">
+                        <button
+                            onClick={() => navigate('/login?role=recruiter')}
+                            className="bg-primary-container text-on-primary-container px-8 py-4 font-bold text-base hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20 rounded-xl"
+                        >
+                            Start Hiring with Guardian
+                        </button>
+                        <button
+                            onClick={() => navigate('/login?role=candidate')}
+                            className="text-primary border border-outline-variant/30 px-8 py-4 font-bold text-base hover:bg-white/5 active:scale-95 transition-all rounded-xl"
+                        >
+                            Take an Assessment
+                        </button>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-8 md:gap-16">
+                        <div className="flex items-center gap-2 text-slate-500 font-label text-[10px] tracking-widest uppercase">
+                            <span className="material-symbols-outlined text-secondary">lock</span>
+                            AES-256 Encrypted
                         </div>
-
-                        <h1 className="text-5xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-primary-100 to-primary-300 mb-6 leading-tight font-display">
-                            Hiring Decisions,<br />
-                            <span className="text-white">Mathematically Proven.</span>
-                        </h1>
-
-                        <p className="text-xl text-neutral-400 mb-8 max-w-xl leading-relaxed">
-                            Stop guessing. Cygnusa Guardian creates a <span className="text-primary-400 font-semibold">glass-box forensic record</span> of every candidate's skills, integrity, and potential.
-                        </p>
-
-                        <div className="flex flex-wrap gap-4">
-                            <button
-                                onClick={() => navigate('/login')}
-                                className="flex items-center gap-3 px-8 py-4 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-semibold transition-all shadow-lg shadow-primary-900/50 border border-primary-500 hover:scale-[1.02] group"
-                            >
-                                <Users size={20} className="group-hover:animate-pulse" />
-                                <span>Recruiter Login</span>
-                            </button>
-
-                            <button
-                                onClick={() => navigate('/login')}
-                                className="flex items-center gap-3 px-8 py-4 bg-surface-elevated hover:bg-surface-overlay text-white rounded-lg font-semibold transition-all border border-surface-overlay hover:border-primary-500/50"
-                            >
-                                <FileSearch size={20} />
-                                <span>Candidate Login</span>
-                            </button>
+                        <div className="flex items-center gap-2 text-slate-500 font-label text-[10px] tracking-widest uppercase">
+                            <span className="material-symbols-outlined text-secondary">psychology</span>
+                            XAI Decision Engine
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-500 font-label text-[10px] tracking-widest uppercase">
+                            <span className="material-symbols-outlined text-secondary">videocam</span>
+                            Real-time Proctoring
                         </div>
                     </div>
+                </section>
 
-                    {/* Evidence Flow Visualization (Right Side) */}
-                    <div className="relative hidden lg:block">
-                        <div className="absolute -inset-4 bg-primary-500/10 blur-3xl rounded-full opacity-50" />
-
-                        <div className="relative bg-surface-elevated border border-surface-overlay rounded-xl p-6 shadow-2xl backdrop-blur-sm animate-float">
-                            <div className="flex items-center justify-between border-b border-surface-overlay pb-4 mb-4">
-                                <span className="text-xs font-mono text-neutral-500">LIVESTREAM_MONITOR_01</span>
-                                <div className="flex gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-danger-500" />
-                                    <div className="w-2 h-2 rounded-full bg-warning-500" />
-                                    <div className="w-2 h-2 rounded-full bg-success-500" />
-                                </div>
+                {/* Features Grid */}
+                <section id="features" className="max-w-7xl mx-auto px-6 py-20">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">The Forensic Hiring Stack</h2>
+                        <p className="text-on-surface-variant max-w-xl mx-auto">Every layer of the assessment is explainable, auditable, and defensible.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="glass-panel p-8 border border-outline-variant/10 group hover:border-primary/30 transition-all duration-500 rounded-2xl">
+                            <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                                <span className="material-symbols-outlined text-primary">description</span>
                             </div>
+                            <h3 className="text-xl font-bold mb-3">Resume Forensics</h3>
+                            <p className="text-on-surface-variant text-sm leading-relaxed">
+                                AI-powered claim probing that cross-references resume statements with behavioral evidence. Detects credential inflation and skill misrepresentation.
+                            </p>
+                        </div>
+                        <div className="glass-panel p-8 border border-outline-variant/10 group hover:border-primary/30 transition-all duration-500 rounded-2xl">
+                            <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                                <span className="material-symbols-outlined text-primary">code</span>
+                            </div>
+                            <h3 className="text-xl font-bold mb-3">Live Code Execution</h3>
+                            <p className="text-on-surface-variant text-sm leading-relaxed">
+                                Sandboxed code assessment with real test-case execution, keystroke biometrics, and anti-cheat monitoring. Every submission is forensically timestamped.
+                            </p>
+                        </div>
+                        <div className="glass-panel p-8 border border-outline-variant/10 group hover:border-primary/30 transition-all duration-500 rounded-2xl">
+                            <div className="w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                                <span className="material-symbols-outlined text-primary">account_tree</span>
+                            </div>
+                            <h3 className="text-xl font-bold mb-3">XAI Verdicts</h3>
+                            <p className="text-on-surface-variant text-sm leading-relaxed">
+                                Every hiring verdict comes with a full decision tree, evidentiary mapping, and counterfactual analysis. Know exactly why each decision was made.
+                            </p>
+                        </div>
+                    </div>
+                </section>
 
-                            <div className="space-y-4">
+                {/* How It Works */}
+                <section id="how-it-works" className="max-w-7xl mx-auto px-6 py-20">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">How It Works</h2>
+                        <p className="text-on-surface-variant max-w-xl mx-auto">Two portals. One forensic-grade process.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Recruiter Flow */}
+                        <div className="glass-panel p-10 border border-outline-variant/10 rounded-2xl relative overflow-hidden group hover:border-primary/20 transition-all duration-500">
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full blur-[60px] pointer-events-none"></div>
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                                    <span className="material-symbols-outlined text-primary">work</span>
+                                </div>
+                                <h3 className="text-lg font-bold">For Recruiters</h3>
+                            </div>
+                            <div className="space-y-5">
                                 {[
-                                    { label: 'RESUME_ANALYSIS', score: 92, color: 'text-success-400', bar: 'bg-success-500' },
-                                    { label: 'CODE_QUALITY', score: 87, color: 'text-primary-400', bar: 'bg-primary-500' },
-                                    { label: 'INTEGRITY_INDEX', score: 100, color: 'text-success-400', bar: 'bg-success-500' }
-                                ].map((metric, i) => (
-                                    <div key={i} className="group">
-                                        <div className="flex justify-between text-xs font-mono mb-1">
-                                            <span className="text-neutral-400">{metric.label}</span>
-                                            <span className={metric.color}>{metric.score}%</span>
+                                    { icon: 'upload_file', title: 'Upload Resumes', desc: 'Bulk or single resume analysis with AI-powered claim probing' },
+                                    { icon: 'assessment', title: 'Launch Assessments', desc: 'Multi-stage evaluation: coding, MCQ, reasoning, psychometric' },
+                                    { icon: 'monitoring', title: 'Live Proctoring', desc: 'Real-time integrity monitoring with webcam and behavioral signals' },
+                                    { icon: 'fact_check', title: 'XAI Reports', desc: 'Glass-box verdict with full forensic audit trail and counterfactuals' },
+                                ].map((step, i) => (
+                                    <div key={i} className="flex items-start gap-4">
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant/20 mt-0.5">
+                                            <span className="material-symbols-outlined text-primary text-sm">{step.icon}</span>
                                         </div>
-                                        <div className="h-1.5 bg-surface-base rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full ${metric.bar} transition-all duration-1000 ease-out`}
-                                                style={{ width: `${metric.score}%` }}
-                                            />
+                                        <div>
+                                            <p className="font-semibold text-sm text-white">{step.title}</p>
+                                            <p className="text-on-surface-variant text-xs mt-0.5">{step.desc}</p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-
-                            <div className="mt-6 pt-4 border-t border-surface-overlay">
-                                <div className="flex items-center gap-3 text-sm text-neutral-300">
-                                    <div className="w-8 h-8 rounded bg-primary-900/50 flex items-center justify-center border border-primary-800">
-                                        <Sparkles size={14} className="text-primary-400" />
-                                    </div>
-                                    <div>
-                                        <div className="text-xs font-mono text-primary-400">AI_DECISION_ENGINE</div>
-                                        <div>Recommended for HIRE</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Floating Badges */}
-                        <div className="absolute -right-6 top-10 bg-surface-elevated border border-surface-overlay p-3 rounded-lg shadow-xl animate-pulse-slow">
-                            <div className="flex items-center gap-2 text-xs font-mono text-danger-400">
-                                <AlertTriangle size={14} />
-                                <span>Eye Movement Detected</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            {/* Candidates Section */}
-            <section id="candidates" className="max-w-7xl mx-auto px-6 pt-16 pb-32">
-                <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-neutral-400 flex items-center gap-3 font-display">
-                        <Users className="text-primary-500" />
-                        Active Investigations
-                    </h2>
-
-
-                    {loading && (
-                        <div className="flex items-center gap-2">
-                            <ForensicLoader size={24} text="FETCHING_RECORDS..." />
-                        </div>
-                    )}
-                </div>
-
-                {candidates.length === 0 ? (
-                    <div className="bg-surface-elevated border border-dashed border-neutral-700 rounded-xl p-16 text-center">
-                        <div className="w-16 h-16 bg-surface-base rounded-full flex items-center justify-center mx-auto mb-6 border border-surface-overlay">
-                            <FileSearch className="w-8 h-8 text-neutral-600" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-white mb-2">No Active Records</h3>
-                        <p className="text-neutral-500 mb-8 max-w-md mx-auto">
-                            The investigation queue is empty. Initialize demo data to see the forensic capabilities in action.
-                        </p>
-                        <button
-                            onClick={seedDemoData}
-                            className="text-primary-400 hover:text-primary-300 font-mono text-sm underline underline-offset-4"
-                        >
-                            [EXECUTE_DEMO_SEED_PROTOCOL]
-                        </button>
-                    </div>
-                ) : (
-                    <div className="grid gap-4">
-                        <div className="grid grid-cols-12 px-6 py-2 text-xs font-mono text-neutral-500 uppercase tracking-wider">
-                            <div className="col-span-5">Subject Identity</div>
-                            <div className="col-span-3">Integrity Status</div>
-                            <div className="col-span-3">AI Verdict</div>
-                            <div className="col-span-1"></div>
-                        </div>
-
-                        {candidates.map((candidate) => (
-                            <Link
-                                key={candidate.id}
-                                to={`/recruiter/${candidate.id}`}
-                                className="grid grid-cols-12 items-center bg-surface-elevated border border-surface-overlay rounded-lg p-4 hover:border-primary-500/50 hover:shadow-lg hover:shadow-primary-900/20 transition-all group"
+                            <button
+                                onClick={() => navigate('/login?role=recruiter')}
+                                className="mt-8 w-full bg-primary-container text-on-primary-container py-3 rounded-xl font-bold text-sm hover:brightness-110 active:scale-[0.98] transition-all"
                             >
-                                <div className="col-span-5 flex items-center gap-4">
-                                    <div className="w-10 h-10 bg-surface-base rounded border border-surface-overlay flex items-center justify-center text-neutral-300 font-bold font-mono group-hover:bg-primary-900/30 group-hover:text-primary-300 group-hover:border-primary-800 transition-colors">
-                                        {candidate.name?.charAt(0) || '?'}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-neutral-100 font-semibold group-hover:text-primary-400 transition-colors cursor-pointer">
-                                            {candidate.name}
-                                        </h3>
-                                        <div className="text-xs text-neutral-500 font-mono">
-                                            ID: {candidate.id.slice(0, 8)} • {candidate.job_title}
+                                Access Recruiter Dashboard
+                            </button>
+                        </div>
+
+                        {/* Candidate Flow */}
+                        <div className="glass-panel p-10 border border-outline-variant/10 rounded-2xl relative overflow-hidden group hover:border-secondary/20 transition-all duration-500">
+                            <div className="absolute top-0 right-0 w-40 h-40 bg-secondary/5 rounded-full blur-[60px] pointer-events-none"></div>
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center border border-secondary/20">
+                                    <span className="material-symbols-outlined text-secondary">person</span>
+                                </div>
+                                <h3 className="text-lg font-bold">For Candidates</h3>
+                            </div>
+                            <div className="space-y-5">
+                                {[
+                                    { icon: 'login', title: 'Sign In', desc: 'Create your account and verify your identity securely' },
+                                    { icon: 'description', title: 'Submit Resume', desc: 'Upload and let our AI validate your professional claims' },
+                                    { icon: 'terminal', title: 'Complete Assessment', desc: 'Coding challenges, MCQ, reasoning, and psychometric evaluation' },
+                                    { icon: 'shield', title: 'Transparent Results', desc: 'See exactly how your performance was evaluated — no hidden criteria' },
+                                ].map((step, i) => (
+                                    <div key={i} className="flex items-start gap-4">
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant/20 mt-0.5">
+                                            <span className="material-symbols-outlined text-secondary text-sm">{step.icon}</span>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-sm text-white">{step.title}</p>
+                                            <p className="text-on-surface-variant text-xs mt-0.5">{step.desc}</p>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="col-span-3">
-                                    <div className={`inline-flex items-center gap-2 pl-2 pr-3 py-1 rounded-full text-xs font-medium border ${candidate.status === 'completed'
-                                        ? 'bg-success-500/10 text-success-400 border-success-500/20'
-                                        : candidate.status === 'in_progress'
-                                            ? 'bg-secondary-500/10 text-secondary-400 border-secondary-500/20'
-                                            : 'bg-neutral-500/10 text-neutral-400 border-neutral-500/20'
-                                        }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${candidate.status === 'in_progress' ? 'animate-pulse bg-secondary-500' : candidate.status === 'completed' ? 'bg-success-500' : 'bg-neutral-500'}`} />
-                                        {candidate.status?.replace('_', ' ').toUpperCase() || 'PENDING'}
-                                    </div>
-                                </div>
-
-                                <div className="col-span-3">
-                                    {candidate.has_decision && (
-                                        <div className="flex items-center gap-2">
-                                            {getOutcomeIcon({ outcome: candidate.final_decision?.outcome || 'NO_HIRE' })}
-                                            <span className={`text-sm font-medium ${candidate.final_decision?.outcome === 'HIRE' ? 'text-success-400' :
-                                                candidate.final_decision?.outcome === 'NO_HIRE' ? 'text-danger-400' :
-                                                    'text-secondary-400'
-                                                }`}>
-                                                {candidate.final_decision?.outcome}
-                                                {candidate.final_decision?.confidence && (
-                                                    <span className="text-xs text-neutral-500 ml-2 font-mono opacity-70">
-                                                        {Math.round(parseFloat(candidate.final_decision.confidence === 'high' ? 0.9 : 0.7) * 100)}%
-                                                    </span>
-                                                )}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="col-span-1 text-right">
-                                    <ChevronRight className="text-neutral-600 group-hover:text-primary-400 transition-colors ml-auto" size={18} />
-                                </div>
-                            </Link>
-                        ))}
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => navigate('/login?role=candidate')}
+                                className="mt-8 w-full border border-secondary/30 text-secondary py-3 rounded-xl font-bold text-sm hover:bg-secondary/5 active:scale-[0.98] transition-all"
+                            >
+                                Start Assessment
+                            </button>
+                        </div>
                     </div>
-                )}
-            </section>
+                </section>
 
-            {/* How It Works (Footer area) */}
-            <div className="border-t border-surface-overlay bg-surface-base/50">
-                <div className="max-w-7xl mx-auto px-6 py-12">
-                    <p className="text-center text-xs font-mono text-neutral-600">
-                        CYGNUSA GUARDIAN SYSTEM • ENCRYPTED CONNECTION • v2.0.4-stable
-                    </p>
+                {/* Security Section */}
+                <section id="security" className="max-w-7xl mx-auto px-6 py-20">
+                    <div className="glass-panel p-12 md:p-16 border border-outline-variant/10 rounded-2xl text-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none"></div>
+                        <span className="material-symbols-outlined text-5xl text-primary mb-6 block">verified_user</span>
+                        <h2 className="text-3xl font-bold tracking-tight mb-4">Enterprise-Grade Security</h2>
+                        <p className="text-on-surface-variant max-w-2xl mx-auto mb-10">
+                            Every assessment session runs in an encrypted, audited forensic environment. Data is never shared, always encrypted at rest and in transit, and every decision is fully traceable.
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+                            {[
+                                { icon: 'lock', label: 'AES-256 Encryption' },
+                                { icon: 'fingerprint', label: 'Keystroke DNA' },
+                                { icon: 'visibility', label: 'Full Audit Trail' },
+                                { icon: 'gavel', label: 'GDPR Compliant' },
+                            ].map((item, i) => (
+                                <div key={i} className="flex flex-col items-center gap-2 p-4">
+                                    <span className="material-symbols-outlined text-secondary text-2xl">{item.icon}</span>
+                                    <span className="text-[10px] font-label uppercase tracking-widest text-slate-400">{item.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            {/* Footer */}
+            <footer className="bg-[#0A0B0F] border-t border-[#464554]/10 w-full py-12">
+                <div className="flex flex-col md:flex-row justify-between items-center px-12 max-w-[1440px] mx-auto w-full gap-8">
+                    <div className="flex flex-col gap-2 text-center md:text-left">
+                        <span className="font-black text-slate-300 tracking-tighter text-lg">CYGNUSA GUARDIAN</span>
+                        <span className="text-xs text-slate-500">© 2025 Cygnusa Guardian. Forensic Intelligence Secured.</span>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-8 text-xs text-slate-500">
+                        <a className="hover:text-secondary transition-colors underline-offset-4 hover:underline" href="#">Privacy Policy</a>
+                        <a className="hover:text-secondary transition-colors underline-offset-4 hover:underline" href="#">Terms of Service</a>
+                        <a className="hover:text-secondary transition-colors underline-offset-4 hover:underline" href="#">Security Disclosure</a>
+                        <a className="hover:text-secondary transition-colors underline-offset-4 hover:underline" href="#">Contact Support</a>
+                    </div>
                 </div>
-            </div>
+            </footer>
         </div>
     );
 }
-
-export default HomePage;

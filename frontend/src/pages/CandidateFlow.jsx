@@ -288,10 +288,13 @@ export function CandidateFlow() {
     // Loading state
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Loading assessment...</p>
+            <div className="min-h-screen flex items-center justify-center bg-background text-on-surface">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="relative w-16 h-16">
+                        <div className="absolute inset-0 border-2 border-surface-container-high rounded-full"></div>
+                        <div className="absolute inset-0 border-2 border-primary rounded-full border-t-transparent animate-spin"></div>
+                    </div>
+                    <p className="text-primary font-label text-xs uppercase tracking-widest animate-pulse">Loading Assessment Protocol...</p>
                 </div>
             </div>
         );
@@ -300,14 +303,14 @@ export function CandidateFlow() {
     // Error state
     if (error) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="text-center max-w-md">
-                    <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <p className="text-gray-800 font-medium mb-2">Something went wrong</p>
-                    <p className="text-gray-600 mb-4">{error}</p>
+            <div className="min-h-screen flex items-center justify-center bg-background text-on-surface">
+                <div className="text-center max-w-md glass-panel p-8 rounded-2xl border border-tertiary/20">
+                    <AlertCircle className="w-12 h-12 text-tertiary mx-auto mb-4" />
+                    <p className="text-white font-bold mb-2">Something went wrong</p>
+                    <p className="text-on-surface-variant mb-4 text-sm">{error}</p>
                     <button
                         onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+                        className="px-6 py-3 bg-primary-container text-white rounded-xl font-label uppercase text-xs tracking-widest hover:brightness-110 active:scale-95 transition-all"
                     >
                         Retry
                     </button>
@@ -342,8 +345,7 @@ export function CandidateFlow() {
     const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
     return (
-        <div className="min-h-screen bg-surface-base text-neutral-50 font-sans selection:bg-primary-500 selection:text-white flex flex-col">
-            <Header />
+        <div className="min-h-screen bg-background text-on-surface font-body flex flex-col">
 
             {/* Shadow Deep Probe Overlay */}
             {activeProbe && (
@@ -370,13 +372,10 @@ export function CandidateFlow() {
             {/* Assessment Monitoring (only for candidates, never recruiters) */}
             {currentSection !== 'complete' && assessment && localStorage.getItem('role') !== 'recruiter' && (
                 <>
-                    {/* Integrity Monitor (fixed) */}
                     <IntegrityMonitor
                         candidateId={candidateId}
                         onViolationUpdate={(count) => setViolationCount(count)}
                     />
-
-                    {/* Webcam Proctoring (fixed position) */}
                     <div className="fixed bottom-4 right-4 z-50">
                         <WebcamProctor
                             candidateId={candidateId}
@@ -387,17 +386,17 @@ export function CandidateFlow() {
                 </>
             )}
 
-            {/* Header */}
-            <header className="bg-surface-elevated border-b border-surface-overlay sticky top-0 z-40 backdrop-blur-md bg-surface-elevated/90">
+            {/* Obsidian Assessment Header */}
+            <header className="bg-[#0A0B0F]/90 border-b border-outline-variant/10 sticky top-0 z-40 backdrop-blur-xl">
                 <div className="max-w-7xl mx-auto px-6 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-800 rounded flex items-center justify-center border border-primary-500/50 shadow-lg shadow-primary-900/50">
-                                <span className="text-white font-mono font-bold text-lg">CG</span>
+                            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
+                                <span className="text-primary font-label font-bold text-lg">CG</span>
                             </div>
                             <div>
-                                <h1 className="font-display font-bold text-lg text-white">Cygnusa Assessment</h1>
-                                <div className="flex items-center gap-2 text-xs font-mono text-primary-400">
+                                <h1 className="font-headline font-bold text-lg text-white">Cygnusa Assessment</h1>
+                                <div className="flex items-center gap-2 text-xs font-label text-primary/70">
                                     <span>ID: {assessment?.id?.slice(0, 8) || 'UNK'}</span>
                                     <span>•</span>
                                     <span>SUBJECT: {assessment?.candidate_name?.toUpperCase()}</span>
@@ -406,13 +405,12 @@ export function CandidateFlow() {
                         </div>
 
                         <div className="flex items-center gap-6">
-                            {/* Enhanced Progress Stepper with Step Numbers and Connecting Lines */}
-                            <div className="hidden md:flex items-center bg-surface-base border border-surface-overlay rounded-lg px-2 py-1">
+                            {/* Step Stepper */}
+                            <div className="hidden md:flex items-center bg-surface-container-low border border-outline-variant/10 rounded-xl px-3 py-2 gap-1">
                                 {[
-                                    // Conditionally include coding step based on role type
-                                    ...(requiresCoding ? [{ id: 'coding', icon: Code, label: 'CODING', step: 1 }] : []),
-                                    { id: 'mcq', icon: MessageSquare, label: 'SCENARIOS', step: requiresCoding ? 2 : 1 },
-                                    { id: 'text', icon: FileText, label: requiresCoding ? 'REASONING' : 'DOMAIN', step: requiresCoding ? 3 : 2 },
+                                    ...(requiresCoding ? [{ id: 'coding', icon: Code, label: 'CODE', step: 1 }] : []),
+                                    { id: 'mcq', icon: MessageSquare, label: 'MCQ', step: requiresCoding ? 2 : 1 },
+                                    { id: 'text', icon: FileText, label: 'TEXT', step: requiresCoding ? 3 : 2 },
                                     { id: 'claims', icon: Check, label: 'VERIFY', step: requiresCoding ? 4 : 3 },
                                     { id: 'psychometric', icon: SlidersHorizontal, label: 'PROFILE', step: requiresCoding ? 5 : 4 },
                                 ].map((section, i, arr) => {
@@ -427,46 +425,36 @@ export function CandidateFlow() {
 
                                     return (
                                         <div key={section.id} className="flex items-center">
-                                            {/* Step Circle */}
                                             <div className="flex flex-col items-center gap-0.5">
-                                                <div
-                                                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono font-bold border-2 transition-all duration-300 ${isCompleted || isPast
-                                                        ? 'bg-success-500 border-success-400 text-white shadow-[0_0_8px_rgba(34,197,94,0.4)]'
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-label font-bold border-2 transition-all duration-300 ${
+                                                    isCompleted || isPast
+                                                        ? 'bg-secondary border-secondary/40 text-on-secondary'
                                                         : isActive
-                                                            ? 'bg-primary-600 border-primary-400 text-white shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse'
-                                                            : 'bg-surface-elevated border-surface-overlay text-neutral-500'
-                                                        }`}
-                                                >
-                                                    {isCompleted || isPast ? (
-                                                        <Check size={12} className="stroke-[3]" />
-                                                    ) : (
-                                                        section.step
-                                                    )}
+                                                            ? 'bg-primary-container border-primary/40 text-white animate-pulse-slow'
+                                                            : 'bg-surface-container-high border-outline-variant/20 text-on-surface-variant'
+                                                }`}>
+                                                    {isCompleted || isPast ? <Check size={12} className="stroke-[3]" /> : section.step}
                                                 </div>
-                                                <span className={`text-[8px] font-mono tracking-tight ${isActive ? 'text-primary-400' : isCompleted || isPast ? 'text-success-400' : 'text-neutral-600'
-                                                    }`}>
-                                                    {section.label}
-                                                </span>
+                                                <span className={`text-[8px] font-label tracking-tight ${
+                                                    isActive ? 'text-primary' : isCompleted || isPast ? 'text-secondary' : 'text-on-surface-variant/40'
+                                                }`}>{section.label}</span>
                                             </div>
-
-                                            {/* Connecting Line */}
                                             {i < arr.length - 1 && (
-                                                <div className={`w-6 h-0.5 mx-1 transition-all duration-500 ${completedSections[section.id] || isPast
-                                                    ? 'bg-success-500'
-                                                    : 'bg-surface-overlay'
-                                                    }`} />
+                                                <div className={`w-5 h-0.5 mx-1 transition-all duration-500 ${
+                                                    completedSections[section.id] || isPast ? 'bg-secondary' : 'bg-outline-variant/20'
+                                                }`} />
                                             )}
                                         </div>
                                     );
                                 })}
                             </div>
 
-
-                            {/* Timer Display */}
-                            <div className={`flex items-center gap-3 px-4 py-2 rounded border font-mono font-bold transition-all ${timeLeft < 300
-                                ? 'bg-danger-900/20 border-danger-500 text-danger-500 animate-pulse'
-                                : 'bg-surface-base border-primary-500/30 text-primary-400'
-                                }`}>
+                            {/* Timer */}
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-label font-bold transition-all ${
+                                timeLeft < 300
+                                    ? 'bg-tertiary/10 border-tertiary/30 text-tertiary animate-pulse'
+                                    : 'bg-surface-container-low border-outline-variant/20 text-primary'
+                            }`}>
                                 <Timer size={16} />
                                 <span className="text-lg tracking-widest">{formatTime(timeLeft)}</span>
                             </div>
@@ -474,9 +462,9 @@ export function CandidateFlow() {
                     </div>
 
                     {/* Progress bar */}
-                    <div className="w-full bg-surface-base rounded-full h-1 overflow-hidden border border-surface-overlay/50">
+                    <div className="w-full bg-surface-container-lowest rounded-full h-1 overflow-hidden">
                         <div
-                            className="bg-gradient-to-r from-primary-600 to-primary-400 h-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                            className="bg-gradient-to-r from-primary-container to-primary h-full transition-all duration-500 ease-out shadow-lg shadow-primary/20"
                             style={{ width: `${progressPercent}%` }}
                         />
                     </div>
@@ -720,48 +708,44 @@ export function CandidateFlow() {
 
                 {/* Complete Section */}
                 {currentSection === 'complete' && (
-                    <div className="max-w-2xl mx-auto text-center pt-20 animate-fade-in-up">
-                        <div className="bg-surface-elevated rounded-2xl border border-surface-overlay p-12 shadow-2xl">
-                            <div className="w-24 h-24 bg-success-900/20 border border-success-500/30 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce-slow">
-                                <CheckCircle className="w-12 h-12 text-success-500" />
+                    <div className="max-w-2xl mx-auto text-center pt-20">
+                        <div className="glass-panel rounded-2xl border border-secondary/20 p-12">
+                            <div className="w-24 h-24 bg-secondary/10 border border-secondary/20 rounded-full flex items-center justify-center mx-auto mb-8">
+                                <CheckCircle className="w-12 h-12 text-secondary" />
                             </div>
-
-                            <h2 className="text-3xl font-display font-bold text-white mb-4">
+                            <h2 className="text-3xl font-headline font-bold text-white mb-4 tracking-tight">
                                 Assessment Protocol Complete
                             </h2>
-
-                            <p className="text-neutral-400 mb-10 text-lg leading-relaxed">
+                            <p className="text-on-surface-variant mb-10 text-lg leading-relaxed">
                                 Evidence has been secured and encrypted. The AI analysis engine is currently processing your submission.
                             </p>
-
-                            <div className="bg-surface-base rounded-xl p-8 mb-10 border border-surface-overlay text-left">
-                                <h3 className="font-mono text-sm font-bold text-neutral-300 mb-4 uppercase tracking-wider">Authentication Log</h3>
+                            <div className="bg-surface-container-low rounded-2xl p-8 mb-10 border border-outline-variant/10 text-left">
+                                <h3 className="font-label text-sm font-bold text-on-surface mb-4 uppercase tracking-widest">Authentication Log</h3>
                                 <ul className="space-y-4">
-                                    <li className="flex items-center gap-3 text-neutral-400 text-sm font-mono">
-                                        <Check className="w-4 h-4 text-success-500" />
+                                    <li className="flex items-center gap-3 text-on-surface-variant text-sm font-label">
+                                        <Check className="w-4 h-4 text-secondary" />
                                         <span>Code Sandbox Execution: VERIFIED</span>
                                     </li>
-                                    <li className="flex items-center gap-3 text-neutral-400 text-sm font-mono">
+                                    <li className="flex items-center gap-3 text-on-surface-variant text-sm font-label">
                                         {violationCount === 0 ? (
                                             <>
-                                                <Check className="w-4 h-4 text-success-500" />
+                                                <Check className="w-4 h-4 text-secondary" />
                                                 <span>Integrity Monitor Status: CLEAN (SAFE)</span>
                                             </>
                                         ) : (
                                             <>
-                                                <AlertCircle className={`w-4 h-4 ${violationCount >= 5 ? 'text-danger-500' : 'text-warning-500'}`} />
-                                                <span>Integrity Monitor Status: {violationCount} EVENTS LOGGED ({violationCount >= 5 ? '⚠️ HIGH RISK' : 'CAUTION'})</span>
+                                                <AlertCircle className={`w-4 h-4 ${violationCount >= 5 ? 'text-tertiary' : 'text-amber-400'}`} />
+                                                <span>Integrity Monitor Status: {violationCount} Events Logged ({violationCount >= 5 ? '⚠ HIGH RISK' : 'CAUTION'})</span>
                                             </>
                                         )}
                                     </li>
-                                    <li className="flex items-center gap-3 text-neutral-400 text-sm font-mono">
-                                        <Check className="w-4 h-4 text-success-500" />
+                                    <li className="flex items-center gap-3 text-on-surface-variant text-sm font-label">
+                                        <Check className="w-4 h-4 text-secondary" />
                                         <span>Forensic Report Generation: QUEUED</span>
                                     </li>
                                 </ul>
                             </div>
-
-                            <p className="text-xs font-mono text-neutral-600">
+                            <p className="text-xs font-label text-on-surface-variant/40">
                                 SESSION_ID: {candidateId} • CONNECTION_TERMINATED
                             </p>
                         </div>
